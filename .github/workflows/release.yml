@@ -1,0 +1,51 @@
+name: Build release packages
+on:
+  push:
+    branches: [main]
+    paths: [VERSION, .github/workflows/release.yml]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-packages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the portable runtime and native installers
+        run: |
+          docker build -f packaging/Dockerfile.bundle -t tsma-kit-builder .
+          docker run --rm -v "$PWD:/src" tsma-kit-builder bash -e -c '
+            python3 -m unittest discover -s tests -q
+            python3 -m unittest discover -s config/Jack/Drivers.d/tests -q
+            python3 packaging/build_appdir.py
+            python3 packaging/complete_manifest.py
+            mkdir -p .cache-build
+            curl -fL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o .cache-build/appimagetool.AppImage
+            chmod +x .cache-build/appimagetool.AppImage
+            version=$(cat VERSION)
+            ARCH=x86_64 .cache-build/appimagetool.AppImage --appimage-extract-and-run --no-appstream dist/TSMA-Kit.AppDir dist/TSMA-Kit-$version-x86_64.AppImage
+            python3 packaging/build_native.py
+            sed -i "s/^# deb-src /deb-src /" /etc/apt/sources.list
+            apt-get update -qq
+            python3 packaging/download_runtime_sources.py
+          '
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Verify final artifacts
+        run: |
+          version=$(cat VERSION)
+          dist/TSMA-Kit-$version-x86_64.AppImage --appimage-extract-and-run --self-test
+          dpkg-deb --info dist/tsma-kit_${version}_amd64.deb
+          cd dist
+          sha256sum TSMA-Kit-$version-x86_64.AppImage tsma-kit_${version}_amd64.deb tsma-kit-$version-1.x86_64.rpm TSMA-Kit-$version-runtime-sources.tar.gz > SHA256SUMS
+      - name: Publish packages and matching runtime sources
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(cat VERSION)
+          gh release view v$version >/dev/null 2>&1 || gh release create v$version --verify-tag --title "TSMA Kit $version" --notes "Self-contained x86_64 AppImage, DEB and RPM with bundled SooperLooper and JACK. Requires glibc 2.35+, systemd user services and X11/XWayland. ToneLib is downloaded separately from the official vendor; no author license or personal backing tracks are included. See README for installation and local FLAC drum-library import."
+          gh release upload v$version dist/TSMA-Kit-$version-x86_64.AppImage dist/tsma-kit_${version}_amd64.deb dist/tsma-kit-$version-1.x86_64.rpm dist/SHA256SUMS dist/TSMA-Kit-$version-runtime-sources.tar.gz --clobber
