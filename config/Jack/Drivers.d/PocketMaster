@@ -1,0 +1,10 @@
+#!/bin/bash
+# Pocket Master ha un clock hardware a 44,1 kHz, indipendente dal server JACK.
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+AUDIO_RATE=$POCKET_MASTER_RATE
+bridge_command "$POCKET_MASTER_IN_BACKEND" in "$POCKET_MASTER_DEVICE" PocketMaster_in 2 "$POCKET_MASTER_PERIOD" "$POCKET_MASTER_PERIODS" 1 || exit 1
+bridge_command "$POCKET_MASTER_OUT_BACKEND" out "$POCKET_MASTER_DEVICE" PocketMaster_out 2 "$POCKET_MASTER_PERIOD" "$POCKET_MASTER_PERIODS" 1 || exit 1
+bridge_begin pocket-master
+bridge_add "$POCKET_MASTER_IN_BACKEND" in "$POCKET_MASTER_DEVICE" PocketMaster_in 2 "$POCKET_MASTER_PERIOD" "$POCKET_MASTER_PERIODS" 1 || exit 1
+bridge_add "$POCKET_MASTER_OUT_BACKEND" out "$POCKET_MASTER_DEVICE" PocketMaster_out 2 "$POCKET_MASTER_PERIOD" "$POCKET_MASTER_PERIODS" 1 || exit 1
+bridge_wait

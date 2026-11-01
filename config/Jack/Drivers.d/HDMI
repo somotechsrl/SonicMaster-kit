@@ -1,0 +1,8 @@
+#!/bin/bash
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+bridge_command "$HDMI_HEAD_BACKEND" out "$HDMI_HEAD_DEVICE" hdmi_head 2 "$HDMI_PERIOD" "$HDMI_PERIODS" 1 || exit 1
+bridge_command "$HDMI_SPKR_BACKEND" out "$HDMI_SPKR_DEVICE" hdmi_spkr 2 "$HDMI_PERIOD" "$HDMI_PERIODS" 1 || exit 1
+bridge_begin hdmi
+bridge_add "$HDMI_HEAD_BACKEND" out "$HDMI_HEAD_DEVICE" hdmi_head 2 "$HDMI_PERIOD" "$HDMI_PERIODS" 1 || exit 1
+bridge_add "$HDMI_SPKR_BACKEND" out "$HDMI_SPKR_DEVICE" hdmi_spkr 2 "$HDMI_PERIOD" "$HDMI_PERIODS" 1 || exit 1
+bridge_wait

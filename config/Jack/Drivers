@@ -1,0 +1,76 @@
+#!/bin/bash
+# Gestore centrale: backend e parametri in Drivers.conf.
+source "$(dirname -- "${BASH_SOURCE[0]}")/Drivers.d/bridge-common.sh" "${1:-run}" || exit $?
+# Il backend jack_mixer gestisce i propri collegamenti applicativi.
+if [[ -r "$JACK_DIR/Mixer/backend" && $(<"$JACK_DIR/Mixer/backend") == mixer ]]; then
+    JAMULUS_ENABLED=0
+    JACKTRIP_ENABLED=0
+    CARLA_ENABLED=0
+fi
+for flag in "$UMC_ENABLED" "$POCKET_MASTER_ENABLED" "$TSMEGA_ENABLED" "$A100_ENABLED" "$HDMI_ENABLED" "$MIDI_ENABLED" "$RESTORE_ALSA_STATE" "$JAMULUS_ENABLED" "$JACKTRIP_ENABLED" "$CARLA_ENABLED"; do
+    [[ $flag =~ ^[01]$ ]] || { warn "Flag configurazione non valido: $flag"; exit 1; }
+done
+devices=()
+[[ $UMC_ENABLED == 0 ]] || devices+=(UMC)
+[[ $A100_ENABLED == 0 ]] || devices+=(A100)
+[[ $POCKET_MASTER_ENABLED == 0 ]] || devices+=(PocketMaster)
+[[ $TSMEGA_ENABLED == 0 ]] || devices+=(TSMEGA)
+[[ $HDMI_ENABLED == 0 ]] || devices+=(HDMI)
+for device in "${devices[@]}"; do
+    "$JACK_DRIVERS_DIR/$device" --check || exit 1
+done
+if [[ $MIDI_ENABLED == 1 ]]; then
+    command -v a2jmidid >/dev/null || { warn "a2jmidid assente"; exit 1; }
+fi
+[[ $JAMULUS_ENABLED == 0 ]] || "$JACK_DRIVERS_DIR/Jamulus" --check || exit 1
+[[ $JACKTRIP_ENABLED == 0 ]] || "$JACK_DRIVERS_DIR/JackTrip" --check || exit 1
+[[ $CARLA_ENABLED == 0 ]] || "$JACK_DRIVERS_DIR/Carla" --check || exit 1
+case "$bridge_mode" in
+    --check) printf 'Configurazione driver valida\n'; exit 0 ;;
+    --show)
+        for device in "${devices[@]}"; do "$JACK_DRIVERS_DIR/$device" --show || exit 1; done
+        [[ $JAMULUS_ENABLED == 0 ]] || "$JACK_DRIVERS_DIR/Jamulus" --show
+        [[ $JACKTRIP_ENABLED == 0 ]] || "$JACK_DRIVERS_DIR/JackTrip" --show
+        [[ $CARLA_ENABLED == 0 ]] || "$JACK_DRIVERS_DIR/Carla" --show
+        [[ $MIDI_ENABLED == 0 ]] || printf 'a2jmidid -e -u\n'
+        exit 0 ;;
+esac
+exec 9>"$JACK_STATE_DIR/drivers.lock"
+flock -n 9 || { warn "Driver già avviati"; exit 0; }
+bridge_pidfile="$JACK_STATE_DIR/drivers.pid"
+printf '%s\n' "$$" > "$bridge_pidfile"
+trap bridge_cleanup EXIT
+trap 'exit 0' TERM INT
+if [[ $RESTORE_ALSA_STATE == 1 && -r /etc/alsa/state ]]; then
+    sudo -n alsactl --file /etc/alsa/state restore || warn "Ripristino ALSA non riuscito"
+fi
+if [[ $MONITOR_ENABLED == 1 || $JAMULUS_ENABLED == 1 || $JACKTRIP_ENABLED == 1 || $CARLA_ENABLED == 1 ]]; then
+    JACK_DRIVERS_OWNER_PID=$$ python3 "$JACK_DRIVERS_DIR/Monitor" --graph-server 9>&- &
+    bridge_children+=("$!")
+fi
+for device in "${devices[@]}"; do
+    JACK_DRIVERS_OWNER_PID=$$ "$JACK_DRIVERS_DIR/$device" 9>&- &
+    bridge_children+=("$!")
+done
+if [[ $MIDI_ENABLED == 1 ]]; then
+    a2jmidid -e -u 9>&- &
+    bridge_children+=("$!")
+fi
+if [[ $JAMULUS_ENABLED == 1 ]]; then
+    JACK_DRIVERS_OWNER_PID=$$ "$JACK_DRIVERS_DIR/Jamulus" 9>&- &
+    bridge_children+=("$!")
+fi
+if [[ $JACKTRIP_ENABLED == 1 ]]; then
+    JACK_DRIVERS_OWNER_PID=$$ "$JACK_DRIVERS_DIR/JackTrip" 9>&- &
+    bridge_children+=("$!")
+fi
+if [[ $CARLA_ENABLED == 1 ]]; then
+    JACK_DRIVERS_OWNER_PID=$$ "$JACK_DRIVERS_DIR/Carla" 9>&- &
+    bridge_children+=("$!")
+fi
+# Un guasto di un dispositivo viene registrato, senza spegnere gli altri.
+failed=0
+for child in "${bridge_children[@]}"; do
+    wait "$child" || { warn "Gestore terminato con errore: $child"; failed=1; }
+done
+exit "$failed"

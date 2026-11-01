@@ -1,0 +1,22 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libgtk-3-dev
+      - name: Python syntax and offline regressions
+        run: |
+          python3 -m py_compile bin/*.py
+          python3 -m unittest discover -s tests -v
+          python3 -m unittest discover -s config/Jack/Drivers.d/tests -v
+      - name: Build and check MIDI mappings
+        run: |
+          cc -Wall -Wextra -Werror -O2 config/Jack/Drivers.d/tsmega-midi.c -Wl,-l:libasound.so.2 -o /tmp/tsma-midi-check
+          /tmp/tsma-midi-check --self-test
+      - name: Build SooperLooper menu lock
+        run: cc -Wall -Wextra -Werror -O2 -shared -fPIC src/slgui-lock.c -Wl,-l:libgtk-3.so.0 -Wl,-l:libgobject-2.0.so.0 -Wl,-l:libglib-2.0.so.0 -o /tmp/slgui-lock.so

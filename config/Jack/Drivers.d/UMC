@@ -1,0 +1,6 @@
+#!/bin/bash
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+bridge_command "$UMC_BACKEND" in "$UMC_DEVICE" U192k_in 4 "$UMC_PERIOD" "$UMC_PERIODS" || exit 1
+bridge_begin umc
+bridge_add "$UMC_BACKEND" in "$UMC_DEVICE" U192k_in 4 "$UMC_PERIOD" "$UMC_PERIODS" || exit 1
+bridge_wait

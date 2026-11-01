@@ -1,0 +1,16 @@
+#!/bin/bash
+# Collega JackTrip alla traccia di ingresso e al bus di uscita Ardour.
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+export JACKTRIP_CLIENT JACKTRIP_DAW_CLIENT JACKTRIP_INPUT_TRACK JACKTRIP_OUTPUT_BUS JACKTRIP_REMOVE_SYSTEM
+for tool in python3 jack_connect jack_disconnect; do
+    command -v "$tool" >/dev/null || { warn "$tool assente"; exit 1; }
+done
+python3 "$JACK_DRIVERS_DIR/jamulus-routing.py" --engine jacktrip --check || exit 1
+case "$bridge_mode" in
+    --check) exit 0 ;;
+    --show) printf 'JackTrip: %s → %s / %s → %s\n' "$JACKTRIP_CLIENT" "$JACKTRIP_INPUT_TRACK" "$JACKTRIP_OUTPUT_BUS" "$JACKTRIP_CLIENT"; exit 0 ;;
+esac
+bridge_begin jacktrip
+JACK_DRIVERS_OWNER_PID=${JACK_DRIVERS_OWNER_PID:-$$} /usr/bin/python3 "$JACK_DRIVERS_DIR/jamulus-routing.py" --engine jacktrip 8>&- 9>&- &
+bridge_children+=("$!")
+bridge_wait

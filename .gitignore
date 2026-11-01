@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.so
+*.o
+/config/Jack/Drivers.d/tsmega-midi
+/tests/jack-probe
+/vendor/*
+!/vendor/.gitkeep
+!/vendor/README.md
+/state/*
+!/state/.gitkeep
+/log/*
+!/log/.gitkeep
+*.reginfo
+*_temp*.cfg
+*.wav
+*.flac
+*.mp3
+*.deb
+*.tar.gz
+/config/Gadwin/Shared/impulses/
+/config/Gadwin/Shared/collections/
+/config/Gadwin/ToneLib GFX/LooperFiles/
+/config/Gadwin/ToneLib GFX/AuditionFiles/
+/dist/
+.env
+.env.*

@@ -1,0 +1,3 @@
+config/openbox.xml is adapted from Openbox's default rc.xml configuration.
+Openbox copyright and license notices are provided in LICENSES/.
+ToneLib GFX is a separate proprietary dependency and is not redistributed here.

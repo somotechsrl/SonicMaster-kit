@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+kit_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+"$kit_dir/Salva-loop"
+sleep 1
+exec /usr/bin/python3 - "$kit_dir" <<'PY'
+import sys
+from pathlib import Path
+root=Path(sys.argv[1]);sys.path.insert(0,str(root/'bin'))
+from export_profile import export_profile
+export_profile(Path.home()/'.config/Gadwin',root/'config/Gadwin')
+print('Musical settings and preset slots exported. Personal recordings, paths and registration files were excluded.')
+PY

@@ -1,0 +1,153 @@
+#!/usr/bin/python3
+"""One native host window containing the two applications on a private X display."""
+import fcntl,json,os,re,secrets,signal,subprocess,time
+from pathlib import Path
+import gi
+gi.require_version('Gtk','3.0');gi.require_version('GdkX11','3.0')
+from gi.repository import Gtk,Gdk,GdkX11,GLib
+ROOT=Path(__file__).resolve().parents[1]
+RUNTIME=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'
+STATE=RUNTIME/'tsma-gui.json'
+
+def call(args,env=None,check=False):
+ return subprocess.run(args,env=env,check=check,capture_output=True,text=True,timeout=5)
+
+def sizes(width,height):
+ """Keep the verified looper panel complete and use the rest for ToneLib."""
+ bottom=min(178,max(160,height//3))
+ return (0,max(1,height-bottom),width,bottom),(0,0,width,max(1,height-bottom))
+
+def monitor_area():
+ display=Gdk.Display.get_default();screen=Gdk.Screen.get_default()
+ monitor=None
+ # On first conversion preserve the monitor where ToneLib was placed.
+ pids=call(['pgrep','-x','ToneLib-GFX']).stdout.split()
+ for line in call(['wmctrl','-lpG']).stdout.splitlines():
+  fields=line.split(None,8)
+  if len(fields)>=8 and fields[2] in pids:
+   monitor=display.get_monitor_at_point(int(fields[3])+int(fields[5])//2,int(fields[4])+int(fields[6])//2);break
+ if monitor is None:
+  _,x,y=display.get_default_seat().get_pointer().get_position()
+  monitor=display.get_monitor_at_point(x,y)
+ if monitor is None:monitor=display.get_primary_monitor() or display.get_monitor(0)
+ rect=monitor.get_workarea()
+ return rect.x,rect.y,rect.width,rect.height
+
+class Container:
+ def __init__(self):
+  self.server=self.wm=None;self.env=None;self.ready=False;self.closed=False;self.last=None;self.peer=None
+  self.log=(ROOT/'log/gui.log').open('a')
+  x,y,w,h=monitor_area();width=min(1506,w-80);height=min(920,h-130)
+  self.window=Gtk.Window(title='TSMA Kit')
+  root_info=call(['xwininfo','-root']).stdout
+  visual_id=int(re.search(r'Visual: (0x[0-9a-fA-F]+)',root_info)[1],16)
+  visual=GdkX11.X11Screen.lookup_visual(Gdk.Screen.get_default(),visual_id)
+  self.window.set_visual(visual)
+  self.window.set_wmclass('tsma-kit','TSMA-Kit')
+  self.window.set_icon_from_file(str(ROOT/'icona.svg'))
+  self.window.set_default_size(width,height);self.window.set_size_request(827,600)
+  header=Gtk.HeaderBar(title='TSMA Kit',show_close_button=True)
+  self.window.set_titlebar(header)
+  style=Gtk.CssProvider()
+  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;}')
+  Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),style,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+  self.window.move(x+(w-width)//2,y+12)
+  self.area=Gtk.DrawingArea();self.area.set_can_focus(True)
+  self.area.set_visual(visual)
+  overlay=Gtk.Overlay();overlay.add(self.area);self.window.add(overlay)
+  self.lock=Gtk.EventBox();self.lock.set_visible_window(True)
+  self.lock.set_above_child(True);self.lock.set_halign(Gtk.Align.START);self.lock.set_valign(Gtk.Align.START)
+  self.lock.set_size_request(64,44);self.lock.set_margin_top(0)
+  self.lock.get_style_context().add_class('tsma-lock')
+  self.lock.add(Gtk.Image.new_from_icon_name('changes-prevent-symbolic',Gtk.IconSize.BUTTON))
+  self.lock.set_tooltip_text('Preferenze bloccate per l’uso dal vivo')
+  self.lock.connect('button-press-event',lambda *_:True)
+  self.lock.connect('scroll-event',lambda *_:True)
+  overlay.add_overlay(self.lock)
+  self.window.connect('delete-event',self.close)
+  self.window.connect('destroy',lambda *_:Gtk.main_quit())
+  self.window.show_all();self.area.grab_focus()
+  GLib.idle_add(self.start)
+  GLib.timeout_add(250,self.tick)
+ def start(self):
+  try:
+   width=self.area.get_allocated_width();height=self.area.get_allocated_height()
+   auth=RUNTIME/'tsma-gui.auth'
+   auth.touch(mode=0o600,exist_ok=True);auth.chmod(0o600)
+   for number in range(90,100):
+    if Path(f'/tmp/.X11-unix/X{number}').exists() or Path(f'/tmp/.X{number}-lock').exists():continue
+    self.display=f':{number}'
+    call(['xauth','-f',str(auth),'add',self.display,'.',secrets.token_hex(16)],check=True)
+    xid=self.area.get_window().get_xid()
+    self.server=subprocess.Popen(['Xephyr',self.display,'-parent',str(xid),'-screen',f'{width}x{height}','-resizeable','-nolisten','tcp','-auth',str(auth),'-noreset','-title','TSMA Kit'],stdout=self.log,stderr=subprocess.STDOUT)
+    self.env=os.environ.copy();self.env.update(DISPLAY=self.display,XAUTHORITY=str(auth),GDK_BACKEND='x11')
+    deadline=time.monotonic()+4
+    while time.monotonic()<deadline and self.server.poll() is None:
+     if call(['xprop','-root'],env=self.env).returncode==0:break
+     time.sleep(.1)
+    else:
+     if self.server.poll() is None:self.server.terminate();self.server.wait(timeout=3)
+     continue
+    self.wm=subprocess.Popen(['openbox','--sm-disable','--config-file',str(ROOT/'config/openbox.xml')],env=self.env,stdout=self.log,stderr=subprocess.STDOUT)
+    deadline=time.monotonic()+4
+    while time.monotonic()<deadline:
+     if call(['wmctrl','-m'],env=self.env).returncode==0:break
+     if self.wm.poll() is not None:raise RuntimeError('Openbox non è partito')
+     time.sleep(.1)
+    else:raise RuntimeError('Gestore delle finestre non pronto')
+    children=call(['xwininfo','-id',str(xid),'-children']).stdout
+    peer=re.search(r'(?m)^\s+(0x[0-9a-fA-F]+) "TSMA Kit":',children)
+    if peer:self.peer=GdkX11.X11Window.foreign_new_for_display(Gdk.Display.get_default(),int(peer[1],16))
+    self.ready=True
+    STATE.write_text(json.dumps({'ready':True,'display':self.display,'xauthority':str(auth),'pid':os.getpid()}))
+    return False
+   raise RuntimeError('Display grafico privato non disponibile')
+  except Exception as exc:
+   print('Contenitore:',exc,flush=True);self.window.destroy();return False
+ def tick(self):
+  if self.closed:return False
+  if self.ready:
+   if self.server.poll() is not None or self.wm.poll() is not None:
+    self.close();self.window.destroy();return False
+   width=self.area.get_allocated_width();height=self.area.get_allocated_height()
+   if self.last!=(width,height):
+    if self.peer:self.peer.move_resize(0,0,width,height)
+    self.lock.set_margin_top(sizes(width,height)[1][1]);self.last=(width,height)
+   rows=call(['wmctrl','-lpG'],env=self.env).stdout.splitlines()
+   pids=call(['pgrep','-x','ToneLib-GFX']).stdout.split()
+   for row in rows:
+    fields=row.split(None,8)
+    if len(fields)<9:continue
+    title=fields[8];geom=None
+    if title.startswith('SooperLooper v '):geom=sizes(width,height)[0]
+    elif fields[2] in pids and title in ('ToneLib GFX','N/A'):geom=sizes(width,height)[1]
+    if geom is None:continue
+    actual=tuple(map(int,(fields[3],fields[4],fields[5],fields[6])))
+    if actual!=geom:
+     call(['wmctrl','-ir',fields[0],'-b','remove,maximized_vert,maximized_horz'],env=self.env)
+     call(['wmctrl','-ir',fields[0],'-e','0,'+','.join(map(str,geom))],env=self.env)
+  return True
+ def close(self,*_):
+  if self.closed:return False
+  self.closed=True;STATE.unlink(missing_ok=True)
+  if self.ready:
+   # Close gracefully while X is still alive so application settings can save.
+   subprocess.run(['systemctl','--user','stop','tsma-tonelib.service','tsma-looper-gui.service','tsma-kit.service'],timeout=20)
+   subprocess.run(['systemctl','--user','stop','jack-tsmega.service','tsma-jack-drivers.service'],timeout=15,stderr=subprocess.DEVNULL)
+  for child in (self.wm,self.server):
+   if child is not None and child.poll() is None:
+    child.terminate()
+    try:child.wait(timeout=3)
+    except subprocess.TimeoutExpired:child.kill();child.wait()
+  self.log.close();return False
+
+if __name__=='__main__':
+ RUNTIME.mkdir(mode=0o700,parents=True,exist_ok=True)
+ with open(RUNTIME/'tsma-gui.lock','w') as lock:
+  try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  except BlockingIOError:raise SystemExit(0)
+  container=Container()
+  def stop(*_):GLib.idle_add(lambda:(container.close(),container.window.destroy(),False)[-1])
+  signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
+  try:Gtk.main()
+  finally:container.close()

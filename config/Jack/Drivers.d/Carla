@@ -1,0 +1,16 @@
+#!/bin/bash
+# Collega Carla alla traccia di ingresso e al bus di uscita Ardour.
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+export CARLA_CLIENT CARLA_DAW_CLIENT CARLA_INPUT_TRACK CARLA_OUTPUT_BUS CARLA_REMOVE_SYSTEM
+for tool in python3 jack_connect jack_disconnect; do
+    command -v "$tool" >/dev/null || { warn "$tool assente"; exit 1; }
+done
+python3 "$JACK_DRIVERS_DIR/jamulus-routing.py" --engine carla --check || exit 1
+case "$bridge_mode" in
+    --check) exit 0 ;;
+    --show) printf 'Carla: %s → %s / %s → %s\n' "$CARLA_CLIENT" "$CARLA_INPUT_TRACK" "$CARLA_OUTPUT_BUS" "$CARLA_CLIENT"; exit 0 ;;
+esac
+bridge_begin carla
+JACK_DRIVERS_OWNER_PID=${JACK_DRIVERS_OWNER_PID:-$$} /usr/bin/python3 "$JACK_DRIVERS_DIR/jamulus-routing.py" --engine carla 8>&- 9>&- &
+bridge_children+=("$!")
+bridge_wait

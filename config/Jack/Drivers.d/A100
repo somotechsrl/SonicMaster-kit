@@ -1,0 +1,8 @@
+#!/bin/bash
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+bridge_command "$A100_IN_BACKEND" in "$A100_DEVICE" A100_in 2 "$A100_PERIOD" "$A100_PERIODS" || exit 1
+bridge_command "$A100_OUT_BACKEND" out "$A100_DEVICE" A100_out 2 "$A100_PERIOD" "$A100_PERIODS" || exit 1
+bridge_begin a100
+bridge_add "$A100_IN_BACKEND" in "$A100_DEVICE" A100_in 2 "$A100_PERIOD" "$A100_PERIODS" || exit 1
+bridge_add "$A100_OUT_BACKEND" out "$A100_DEVICE" A100_out 2 "$A100_PERIOD" "$A100_PERIODS" || exit 1
+bridge_wait

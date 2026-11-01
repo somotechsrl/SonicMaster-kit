@@ -1,0 +1,9 @@
+{
+  "sample_rate": 48000,
+  "buffer_size": 256,
+  "jack_client": "TSMA_Looper",
+  "osc_port": 19951,
+  "loop_seconds": 300,
+  "channels": 2,
+  "ardour_track": "TSMA-Kit"
+}

@@ -1,0 +1,622 @@
+#!/usr/bin/python3
+"""Supervise one Zita bridge, preserve its live JACK graph on recovery."""
+import argparse
+import ctypes
+import socket
+from collections import deque
+import errno
+import fcntl
+import json
+import logging
+from logging.handlers import RotatingFileHandler
+import math
+import os
+from pathlib import Path
+import re
+import selectors
+import signal
+import subprocess
+import sys
+import time
+
+ROOT = Path(__file__).resolve().parent
+STATE = Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp')) / f'jack-hooks-{os.getuid()}'
+CLIENTS = {'UMC': ['U192k_in'], 'A100': ['A100_in', 'A100_out'], 'HDMI': ['hdmi_head', 'hdmi_spkr'], 'PocketMaster': ['PocketMaster_in', 'PocketMaster_out'], 'TSMEGA': ['TSMEGA_in', 'TSMEGA_out']}
+ALL_CLIENTS = sum(CLIENTS.values(), [])
+NUMBER = r'[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|nan|inf(?:inity)?)'
+TRACE = re.compile(r'^\s*(' + NUMBER + r')\s+(' + NUMBER + r')\s+(-?\d+)\s*$', re.IGNORECASE)
+
+
+def telemetry(line):
+    match = TRACE.fullmatch(line)
+    return (float(match[1]), float(match[2])) if match else None
+
+
+def observed_status(client, state):
+    """Read live telemetry even when an older worker cannot parse NaN."""
+    try:
+        with open(STATE / f'{client}.log', 'rb') as stream:
+            stream.seek(max(0, os.fstat(stream.fileno()).st_size - 32768))
+            lines = stream.read().decode(errors='replace').splitlines()
+    except OSError:
+        return state
+    for line in reversed(lines):
+        parts = line.split(maxsplit=2)
+        sample = telemetry(parts[2]) if len(parts) == 3 else None
+        if sample is None:
+            continue
+        error, ratio = sample
+        state.update(error_samples=error if math.isfinite(error) else None,
+                     ratio=ratio if math.isfinite(ratio) else None,
+                     telemetry_invalid=not all(map(math.isfinite, sample)),
+                     telemetry_source='log', telemetry_observed_at=' '.join(parts[:2]))
+        if state['telemetry_invalid']:
+            state['ratio_span_ppm'] = None
+        return state
+    return state
+
+
+def setting(name, default, minimum=0):
+    value = float(os.environ.get('MONITOR_' + name, default))
+    if not math.isfinite(value) or value < minimum:
+        raise ValueError(f'MONITOR_{name} non valido')
+    return value
+
+
+class Policy:
+    def __init__(self):
+        self.warmup = setting('WARMUP', 30, 1)
+        self.sustain = setting('SUSTAIN', 10, 1)
+        self.error_limit = setting('ERROR_SAMPLES', 64, 1)
+        self.ratio_span = setting('RATIO_SPAN_PPM', 1000, 1)
+        self.ratio_limit = setting('RATIO_LIMIT_PPM', 10000, 1)
+        self.cooldown = setting('COOLDOWN', 60, 1)
+        self.limit = setting('MAX_RESTARTS', 3, 1)
+        self.window = setting('RESTART_WINDOW', 600, 1)
+        self.auto = os.environ.get('MONITOR_AUTO_RESTART', '1')
+        if self.auto not in ('0', '1'):
+            raise ValueError('MONITOR_AUTO_RESTART deve essere 0 o 1')
+        self.auto = self.auto == '1'
+
+
+class Detector:
+    def __init__(self, policy, started):
+        self.policy, self.started = policy, started
+        self.samples = deque()
+        self.bad_since = None
+        self.events = deque()
+        self.timing_faults = deque()
+        self.last_error = self.last_ratio = None
+        self.span = 0
+        self.last_sample = None
+        self.invalid_since = None
+
+    def feed(self, line, now):
+        sample = telemetry(line)
+        if sample is not None:
+            error, ratio = sample
+            if not all(map(math.isfinite, (error, ratio))):
+                if self.last_sample is not None and now - self.last_sample > 2:
+                    self.invalid_since = None
+                self.last_sample = now
+                self.last_error = error if math.isfinite(error) else None
+                self.last_ratio = ratio if math.isfinite(ratio) else None
+                self.samples.clear()
+                self.span = 0
+                self.bad_since = None
+                if now - self.started < self.policy.warmup:
+                    self.invalid_since = None
+                    return None
+                if self.invalid_since is None:
+                    self.invalid_since = now
+                elif now - self.invalid_since >= self.policy.sustain:
+                    return 'dati di sincronizzazione Zita non finiti persistenti (NaN/Inf)'
+                return None
+            self.invalid_since = None
+            if self.last_sample is not None and now - self.last_sample > 2:
+                self.bad_since = None
+                self.samples.clear()
+            self.last_sample = now
+            self.last_error, self.last_ratio = error, ratio
+            if now - self.started < self.policy.warmup:
+                return None
+            self.samples.append((now, ratio))
+            while self.samples and self.samples[0][0] < now - self.policy.sustain:
+                self.samples.popleft()
+            self.span = (max(r for _, r in self.samples) - min(r for _, r in self.samples)) * 1e6
+            enough = self.samples and now - self.samples[0][0] >= self.policy.sustain * .8
+            # Require repeated large excursions, not one transient still in the window.
+            crossings = 0
+            side = None
+            if self.span > self.policy.ratio_span:
+                low = min(r for _, r in self.samples)
+                high = max(r for _, r in self.samples)
+                for _, value in self.samples:
+                    new_side = -1 if value <= low + (high-low)*.25 else (1 if value >= high - (high-low)*.25 else None)
+                    if new_side is not None:
+                        if side is not None and new_side != side:
+                            crossings += 1
+                        side = new_side
+            bad = (abs(error) > self.policy.error_limit or
+                   abs(ratio - 1) * 1e6 > self.policy.ratio_limit or
+                   (enough and self.span > self.policy.ratio_span and crossings >= 3))
+            if not bad:
+                self.bad_since = None
+            elif self.bad_since is None:
+                self.bad_since = now
+            elif now - self.bad_since >= self.policy.sustain:
+                return 'errore/oscillazione persistente di sincronizzazione'
+        elif 'excessive timing errors' in line:
+            if now - self.started < self.policy.warmup:
+                return None
+            # Zita emits this only for its 10-second error recovery, not freewheel.
+            self.timing_faults.append(now)
+            while self.timing_faults and self.timing_faults[0] < now - 45:
+                self.timing_faults.popleft()
+            if len(self.timing_faults) >= 3:
+                return 'ripetuti errori e attese di sincronizzazione Zita'
+        elif 'Starting synchronisation' in line:
+            if now - self.started < self.policy.warmup:
+                return None
+            # A return from silent/freewheel operation is not a timing fault.
+            if self.last_sample is None or now - self.last_sample > 2:
+                return None
+            self.events.append(now)
+            while self.events and self.events[0] < now - 30:
+                self.events.popleft()
+            if len(self.events) >= 3:
+                return 'ripetute perdite di sincronizzazione'
+        return None
+
+
+def cli_graph():
+    result = subprocess.run(['jack_lsp', '-c', '-p'], capture_output=True,
+                            text=True, timeout=3, check=True)
+    ports = {}
+    port = None
+    for line in result.stdout.splitlines():
+        if not line[:1].isspace():
+            port = line
+            ports[port] = {'output': False, 'connections': []}
+        elif port and line.strip().startswith('properties:'):
+            ports[port]['output'] = 'output' in line
+        elif port:
+            ports[port]['connections'].append(line.strip())
+    return ports
+
+
+def graph():
+    # Native mode uses one persistent JACK client for all monitors. Repeated
+    # jack_lsp clients can themselves perturb a synchronous JACK graph.
+    if os.environ.get('MONITOR_GRAPH_BACKEND', 'native') == 'cli':
+        return cli_graph()
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+        sock.settimeout(3)
+        sock.connect(str(STATE / 'monitor-graph.sock'))
+        sock.sendall(b'graph\n')
+        chunks = bytearray()
+        while not chunks.endswith(b'\n'):
+            part = sock.recv(65536)
+            if not part:
+                raise OSError('Lettore del grafo JACK disconnesso')
+            chunks.extend(part)
+            if len(chunks) > 4 * 1024 * 1024:
+                raise OSError('Grafo JACK troppo grande')
+        response = json.loads(chunks)
+        if 'error' in response:
+            raise OSError(response['error'])
+        return response['ports']
+
+
+def graph_server():
+    lock = open(STATE / 'monitor-graph.lock', 'w')
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return
+    owner = int(os.environ.get('JACK_DRIVERS_OWNER_PID', '0'))
+    owner_id = identity(owner) if owner else None
+    alive = [True]
+    signal.signal(signal.SIGTERM, lambda *_: alive.__setitem__(0, False))
+    signal.signal(signal.SIGINT, lambda *_: alive.__setitem__(0, False))
+    lib = ctypes.CDLL('libjack.so.0')
+    ptr = ctypes.c_void_p
+    array = ctypes.POINTER(ctypes.c_char_p)
+    lib.jack_client_open.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+    lib.jack_client_open.restype = ptr
+    lib.jack_client_close.argtypes = [ptr]
+    lib.jack_get_ports.argtypes = [ptr, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_ulong]
+    lib.jack_get_ports.restype = array
+    lib.jack_port_by_name.argtypes = [ptr, ctypes.c_char_p]
+    lib.jack_port_by_name.restype = ptr
+    lib.jack_port_flags.argtypes = [ptr]
+    lib.jack_port_get_all_connections.argtypes = [ptr, ptr]
+    lib.jack_port_get_all_connections.restype = array
+    lib.jack_free.argtypes = [ptr]
+    status = ctypes.c_int()
+    client = lib.jack_client_open(b'zita_monitor_graph', 1, ctypes.byref(status))
+    if not client:
+        raise OSError('JACK non disponibile per il lettore del grafo')
+    callback_type = ctypes.CFUNCTYPE(None, ptr)
+    shutdown = callback_type(lambda _: alive.__setitem__(0, False))
+    lib.jack_on_shutdown.argtypes = [ptr, callback_type, ptr]
+    lib.jack_on_shutdown(client, shutdown, None)
+    def strings(pointer):
+        result = []
+        if pointer:
+            try:
+                i = 0
+                while pointer[i]:
+                    result.append(pointer[i].decode())
+                    i += 1
+            finally:
+                lib.jack_free(ctypes.cast(pointer, ptr))
+        return result
+    path = STATE / 'monitor-graph.sock'
+    path.unlink(missing_ok=True)
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+            server.bind(str(path)); os.chmod(path, 0o600)
+            server.listen(16); server.settimeout(.5)
+            print('Lettore persistente del grafo JACK attivo', flush=True)
+            while alive[0] and (not owner or identity(owner) == owner_id):
+                try:
+                    conn, _ = server.accept()
+                except socket.timeout:
+                    continue
+                with conn:
+                    conn.settimeout(3)
+                    try:
+                        if conn.recv(32) != b'graph\n':
+                            continue
+                        ports = {}
+                        for name in strings(lib.jack_get_ports(client, None, None, 0)):
+                            port = lib.jack_port_by_name(client, name.encode())
+                            if port:
+                                ports[name] = {'output': bool(lib.jack_port_flags(port) & 2),
+                                    'connections': strings(lib.jack_port_get_all_connections(client, port))}
+                        conn.sendall(json.dumps({'ports': ports}).encode() + b'\n')
+                    except (OSError, ValueError):
+                        pass
+    finally:
+        path.unlink(missing_ok=True)
+        lib.jack_client_close(client)
+
+
+def connections(ports, clients):
+    prefix = tuple(c + ':' for c in clients)
+    return sorted({(src, dst) for src, data in ports.items() if data['output']
+                   for dst in data['connections'] if src.startswith(prefix) or dst.startswith(prefix)})
+
+
+def restore(pairs, stop=lambda: False, timeout=12):
+    pending = set(map(tuple, pairs))
+    until = time.monotonic() + timeout
+    while pending and time.monotonic() < until and not stop():
+        ports = graph()
+        for src, dst in list(pending):
+            if dst in ports.get(src, {}).get('connections', []):
+                pending.remove((src, dst))
+            elif src in ports and dst in ports:
+                result = subprocess.run(['jack_connect', src, dst], capture_output=True,
+                                        timeout=3)
+                if result.returncode == 0:
+                    pending.remove((src, dst))
+        if pending:
+            time.sleep(.25)
+    # Verify the actual graph, not only successful command return values.
+    ports = graph()
+    pending = {(src, dst) for src, dst in pairs
+               if dst not in ports.get(src, {}).get('connections', [])}
+    return pending
+
+
+def atomic(path, value):
+    tmp = path.with_suffix(path.suffix + '.tmp')
+    tmp.write_text(json.dumps(value, indent=2) + '\n')
+    os.chmod(tmp, 0o600)
+    tmp.replace(path)
+
+
+def identity(pid):
+    try:
+        return Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[19]
+    except OSError:
+        return None
+
+
+class Supervisor:
+    def __init__(self, client, command, policy):
+        self.client, self.command, self.policy = client, command, policy
+        self.stopping = self.requested = False
+        self.proc = None
+        self.selector = selectors.DefaultSelector()
+        self.buffer = b''
+        self.saved = []
+        self.have_snapshot = False
+        self.pending = set()
+        self.restarts = deque()
+        self.last_restart = -float('inf')
+        self.owner = int(os.environ.get('JACK_DRIVERS_OWNER_PID', '0'))
+        self.owner_id = identity(self.owner) if self.owner else None
+        self.log = logging.getLogger(client)
+        self.log.setLevel(logging.INFO)
+        handler = RotatingFileHandler(STATE / f'{client}.log', maxBytes=1048576, backupCount=2)
+        handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+        self.log.addHandler(handler)
+        self.snapshot_at = self.status_at = 0
+        self.reason = 'avvio'
+        # Only TS MEGA gets USB presence handling; other bridges keep their policy.
+        self.usb_missing = False
+        self.usb_recovering = False
+        self.usb_retry_at = 0
+        self.usb_attempts = 0
+        self.usb_ready_since = None
+        self.usb_path = None
+        if client in CLIENTS['TSMEGA'] and '-d' in command:
+            device = command[command.index('-d') + 1]
+            match = re.fullmatch(r'hw:CARD=([^,]+),DEV=(\d+)', device)
+            if match:
+                direction = 'c' if Path(command[0]).name == 'zita-a2j' else 'p'
+                self.usb_path = Path('/proc/asound') / match[1] / ('pcm' + match[2] + direction)
+
+        self.status_path = STATE / f'{client}.monitor.json'
+        self.connection_path = STATE / f'{client}.connections.json'
+        # Keep the last valid graph if a replacement bridge fails before creating ports.
+        if self.connection_path.exists():
+            try:
+                saved = json.loads(self.connection_path.read_text())
+                if isinstance(saved, list) and all(isinstance(pair, list) and len(pair) == 2 and
+                        all(isinstance(value, str) for value in pair) and
+                        any(value.startswith(client + ':') for value in pair) for pair in saved):
+                    self.saved = saved
+                    self.have_snapshot = True
+            except (OSError, ValueError):
+                pass
+
+    def start(self):
+        self.proc = subprocess.Popen(['stdbuf', '-oL', '-eL', *self.command],
+                                     stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT, start_new_session=True)
+        os.set_blocking(self.proc.stdout.fileno(), False)
+        self.selector.register(self.proc.stdout, selectors.EVENT_READ)
+        self.buffer = b''
+        self.detector = Detector(self.policy, time.monotonic())
+        self.log.info('Avvio bridge PID %s: %s', self.proc.pid, self.command)
+
+    def stop_bridge(self):
+        if self.proc is None:
+            return
+        if self.proc.stdout in [k.fileobj for k in self.selector.get_map().values()]:
+            self.selector.unregister(self.proc.stdout)
+        if self.proc.poll() is None:
+            # Zita handles SIGINT and closes ALSA/JACK cleanly; SIGTERM skips its cleanup.
+            self.proc.send_signal(signal.SIGINT)
+            try:
+                self.proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self.log.warning('Stop scaduto, arresto forzato del solo bridge PID %s', self.proc.pid)
+                self.proc.kill()
+                self.proc.wait(timeout=3)
+        self.proc.stdout.close()
+
+    def handle_usb(self):
+        if self.usb_path is None:
+            return False
+        if not self.usb_path.exists():
+            if not self.usb_missing:
+                self.usb_missing = True
+                self.usb_recovering = False
+                self.usb_retry_at = 0
+                self.usb_attempts = 0
+                self.usb_ready_since = None
+                self.log.info('USB scollegato; attesa del dispositivo %s', self.usb_path)
+                self.stop_bridge()
+            self.reason = 'USB scollegato; attesa del Tone Shifter'
+            return True
+        if self.usb_missing or self.usb_recovering:
+            now = time.monotonic()
+            if self.usb_missing or self.proc.poll() is not None:
+                if not self.policy.auto or now < self.usb_retry_at:
+                    return True
+                self.usb_ready_since = None
+                if self.restart('Tone Shifter USB ricollegato', manual=True):
+                    self.usb_missing = False
+                    self.usb_recovering = True
+                    self.usb_attempts += 1
+                    self.usb_retry_at = time.monotonic() + min(30, 2 ** min(self.usb_attempts, 5))
+                return True
+            # ALSA can enumerate before its named PCM opens successfully. Do not
+            # declare recovery complete just because a new process was spawned.
+            if self.pending:
+                self.usb_ready_since = None
+            elif self.usb_ready_since is None:
+                self.usb_ready_since = now
+            elif now - self.usb_ready_since >= 5:
+                self.usb_recovering = False
+                self.usb_attempts = 0
+                self.reason = 'Tone Shifter USB ripristinato'
+        return False
+
+    def restart(self, reason, manual=False):
+        # Only one graph-changing recovery at a time, across all five monitors.
+        with open(STATE / 'monitor-recovery.lock', 'w') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                self.reason = 'un altro bridge è in ripristino; intervento rinviato'
+                return False
+            return self._restart(reason, manual)
+
+    def _restart(self, reason, manual=False):
+        now = time.monotonic()
+        while self.restarts and self.restarts[0] < now - self.policy.window:
+            self.restarts.popleft()
+        if not manual and (not self.policy.auto or now - self.last_restart < self.policy.cooldown or
+                           len(self.restarts) >= self.policy.limit):
+            self.reason = 'anomalia; riavvio automatico sospeso dai limiti'
+            return False
+        usb_return = (self.usb_missing or self.usb_recovering) and self.proc.poll() is not None
+        if self.pending and not usb_return:
+            self.reason = 'ripristino collegamenti ancora incompleto; nessun ulteriore riavvio'
+            return False
+        # Never restart on a JACK failure: graph acquisition must succeed first.
+        ports = graph()
+        if self.proc.poll() is None:
+            if not any(p.startswith(self.client + ':') for p in ports):
+                self.reason = 'porte assenti; nessun riavvio alla cieca'
+                return False
+            self.saved = connections(ports, [self.client])
+        elif not self.have_snapshot and not usb_return:
+            self.reason = 'bridge terminato senza snapshot; intervento manuale necessario'
+            return False
+        self.have_snapshot = True
+        atomic(self.connection_path, self.saved)
+        self.pending = set(map(tuple, self.saved))
+        atomic(STATE / 'monitor-recovery.json', {'started': now, 'client': self.client})
+        self.log.warning('Riavvio: %s; %d collegamenti salvati', reason, len(self.saved))
+        self.stop_bridge()
+        if self.stopping:
+            return False
+        self.start()
+        self.restarts.append(now)
+        self.last_restart = now
+        self.pending = restore(self.saved, lambda: self.stopping, timeout=2 if usb_return else 12)
+        self.reason = 'riavviato: ' + reason
+        self.log.warning('Ripristino: %d/%d collegamenti; mancanti=%s',
+                         len(self.saved) - len(self.pending), len(self.saved), sorted(self.pending))
+        return True
+
+    def status(self):
+        atomic(self.status_path, {
+            'client': self.client, 'monitor_pid': os.getpid(),
+            'bridge_pid': self.proc.pid, 'bridge_running': self.proc.poll() is None,
+            'exit_code': self.proc.poll(),
+            'error_samples': self.detector.last_error, 'ratio': self.detector.last_ratio,
+            'ratio_span_ppm': round(self.detector.span, 2),
+            'telemetry_invalid': self.detector.last_sample is not None and (self.detector.last_error is None or self.detector.last_ratio is None),
+            'telemetry_age_seconds': None if self.detector.last_sample is None else round(time.monotonic() - self.detector.last_sample, 2),
+            'warmup_remaining': max(0, round(self.policy.warmup - (time.monotonic() - self.detector.started))),
+            'auto_restart': self.policy.auto, 'restarts_in_window': len(self.restarts),
+            'pending_connections': sorted(self.pending), 'reason': self.reason,
+            'updated': time.time(),
+        })
+
+    def run(self):
+        signal.signal(signal.SIGTERM, lambda *_: setattr(self, 'stopping', True))
+        signal.signal(signal.SIGINT, lambda *_: setattr(self, 'stopping', True))
+        signal.signal(signal.SIGUSR1, lambda *_: setattr(self, 'requested', True))
+        self.start()
+        try:
+            while not self.stopping:
+                if self.owner and identity(self.owner) != self.owner_id:
+                    break
+                if self.handle_usb():
+                    self.status()
+                    time.sleep(.5)
+                    continue
+                reason = None
+                recovery = STATE / 'monitor-recovery.json'
+                if recovery.exists():
+                    try:
+                        stamp = json.loads(recovery.read_text())['started']
+                        if stamp > self.detector.started:
+                            self.detector = Detector(self.policy, stamp)
+                    except (OSError, ValueError, KeyError):
+                        pass
+                for key, _ in self.selector.select(.25):
+                    data = os.read(key.fd, 65536)
+                    if data:
+                        self.buffer += data
+                        chunks = self.buffer.split(b'\n')
+                        self.buffer = chunks.pop()
+                        for chunk in chunks:
+                            line = chunk.decode(errors='replace').strip()
+                            self.log.info('%s', line)
+                            reason = self.detector.feed(line, time.monotonic()) or reason
+                    else:
+                        time.sleep(.1)
+                now = time.monotonic()
+                try:
+                    if self.requested or reason or self.proc.poll() is not None:
+                        manual, self.requested = self.requested, False
+                        self.restart(reason or ('richiesta manuale' if manual else 'bridge terminato'), manual)
+                    if now >= self.snapshot_at:
+                        ports = graph()
+                        if self.pending:
+                            self.pending = restore(self.saved, lambda: self.stopping, timeout=1)
+                        elif self.proc.poll() is None and any(p.startswith(self.client + ':') for p in ports):
+                            self.saved = connections(ports, [self.client])
+                            self.have_snapshot = True
+                            atomic(self.connection_path, self.saved)
+                        self.snapshot_at = now + 10
+                except (subprocess.SubprocessError, OSError) as exc:
+                    self.reason = 'JACK/ripristino non disponibile: ' + str(exc)
+                    self.snapshot_at = now + 10
+                    self.log.warning('%s', self.reason)
+                    time.sleep(.5)
+                if now >= self.status_at:
+                    self.status()
+                    self.status_at = now + 1
+        finally:
+            self.stop_bridge()
+            self.selector.close()
+            self.status_path.unlink(missing_ok=True)
+            self.log.info('Monitor arrestato; bridge terminato')
+
+
+def main():
+    os.umask(0o077)
+    parser = argparse.ArgumentParser(description=__doc__)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--run', action='store_true')
+    group.add_argument('--graph-server', action='store_true')
+    group.add_argument('--status', action='store_true')
+    group.add_argument('--check', action='store_true')
+    group.add_argument('--restart', choices=ALL_CLIENTS)
+    parser.add_argument('--client', choices=ALL_CLIENTS)
+    parser.add_argument('command', nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if args.graph_server:
+        graph_server()
+    elif args.check:
+        Policy()
+        print('Configurazione monitor valida')
+    elif args.status:
+        for client in ALL_CLIENTS:
+            path = STATE / f'{client}.monitor.json'
+            if not path.exists():
+                print(f'{client}: monitor non attivo')
+            else:
+                print(json.dumps(observed_status(client, json.loads(path.read_text())), ensure_ascii=False))
+    elif args.restart:
+        state = json.loads((STATE / f'{args.restart}.monitor.json').read_text())
+        pid = state['monitor_pid']
+        argv = Path(f'/proc/{pid}/cmdline').read_bytes().split(b'\0')
+        if os.fsencode(str(ROOT / 'Monitor')) not in argv or os.fsencode(args.restart) not in argv:
+            raise RuntimeError('PID monitor non corrispondente')
+        os.kill(pid, signal.SIGUSR1)
+        print('Richiesta di riavvio inviata a ' + args.restart)
+    else:
+        command = args.command[1:] if args.command[:1] == ['--'] else args.command
+        if not args.client or not command or Path(command[0]).name not in ('zita-a2j', 'zita-j2a'):
+            parser.error('--run richiede --client e un comando Zita dopo --')
+        if '-v' not in command:
+            command.append('-v')
+        if '-j' not in command or command[command.index('-j') + 1] != args.client:
+            parser.error('Nome client e comando non corrispondono')
+        lock = open(STATE / f'{args.client}.monitor.lock', 'w')
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            parser.error('Monitor già attivo per questo bridge')
+        Supervisor(args.client, command, Policy()).run()
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (ValueError, RuntimeError, OSError, subprocess.SubprocessError) as exc:
+        print('Monitor: ' + str(exc), file=sys.stderr)
+        sys.exit(1)

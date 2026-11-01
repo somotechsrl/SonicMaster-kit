@@ -1,0 +1,14 @@
+#!/bin/bash
+# MeloAudio Tone Shifter Mega: ponte audio bidirezionale verso JACK.
+source "$(dirname -- "${BASH_SOURCE[0]}")/bridge-common.sh" "${1:-run}" || exit $?
+AUDIO_RATE=$TSMEGA_RATE
+bridge_command "$TSMEGA_IN_BACKEND" in "$TSMEGA_DEVICE" TSMEGA_in 2 "$TSMEGA_PERIOD" "$TSMEGA_PERIODS" || exit 1
+bridge_command "$TSMEGA_OUT_BACKEND" out "$TSMEGA_DEVICE" TSMEGA_out 2 "$TSMEGA_PERIOD" "$TSMEGA_PERIODS" || exit 1
+bridge_begin tsmega
+bridge_add "$TSMEGA_IN_BACKEND" in "$TSMEGA_DEVICE" TSMEGA_in 2 "$TSMEGA_PERIOD" "$TSMEGA_PERIODS" || exit 1
+bridge_add "$TSMEGA_OUT_BACKEND" out "$TSMEGA_DEVICE" TSMEGA_out 2 "$TSMEGA_PERIOD" "$TSMEGA_PERIODS" || exit 1
+if [[ $bridge_mode == run && ${TSMEGA_TONELIB_ENABLED:-1} == 1 ]]; then
+    python3 "$JACK_DRIVERS_DIR/tsmega-routing.py" 8>&- 9>&- &
+    bridge_children+=("$!")
+fi
+bridge_wait
