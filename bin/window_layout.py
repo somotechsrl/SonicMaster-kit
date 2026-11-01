@@ -10,6 +10,6 @@ def minimum_size(hints, default=(848, 187)):
 def sizes(width, height, looper_height=187):
     # wxGTK's minimum differs between distributions. Never allocate less than
     # the application's own minimum: Openbox otherwise grows it below the host.
-    bottom = max(187, looper_height)
+    bottom = max(160, looper_height)
     top = max(1, height - bottom)
     return (0, top, width, bottom), (0, 0, width, top)

@@ -26,3 +26,8 @@ class Layout(unittest.TestCase):
 
  def test_missing_hints_have_a_safe_default(self):
   self.assertEqual(minimum_size('WM_NORMAL_HINTS: not found.'),(848,187))
+
+ def test_compact_panel_does_not_reintroduce_hidden_menu_space(self):
+  looper,tone=sizes(1506,920,178)
+  self.assertEqual(looper,(0,742,1506,178))
+  self.assertEqual(tone,(0,0,1506,742))

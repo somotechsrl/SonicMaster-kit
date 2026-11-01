@@ -137,13 +137,15 @@ class Container:
     if len(fields)<9:continue
     title=fields[8];geom=None
     if title.startswith('SooperLooper v '):
-     if self.looper_window!=fields[0]:
-      hints=call(['xprop','-id',fields[0],'WM_NORMAL_HINTS'],env=self.env).stdout
-      self.looper_min=minimum_size(hints);self.looper_window=fields[0]
+     hints=call(['xprop','-id',fields[0],'WM_NORMAL_HINTS'],env=self.env).stdout
+     reported_min=minimum_size(hints)
+     if self.looper_window!=fields[0] or reported_min!=self.looper_min:
+      new_window=self.looper_window!=fields[0]
+      self.looper_min=reported_min;self.looper_window=fields[0]
       self.window.set_size_request(max(848,self.looper_min[0]),max(600,self.looper_min[1]+300))
       # Older wxGTK builds use WM_CLASS Slgui instead of SooperLooper.
       # This explicit hint also protects against a changed upstream class name.
-      call(['xprop','-id',fields[0],'-f','_MOTIF_WM_HINTS','32c','-set','_MOTIF_WM_HINTS','2, 0, 0, 0, 0'],env=self.env)
+      if new_window:call(['xprop','-id',fields[0],'-f','_MOTIF_WM_HINTS','32c','-set','_MOTIF_WM_HINTS','2, 0, 0, 0, 0'],env=self.env)
      geom=sizes(width,height,self.looper_min[1])[0]
     elif fields[2] in pids and title in ('ToneLib GFX','N/A'):geom=sizes(width,height,self.looper_min[1])[1]
     if geom is None:continue

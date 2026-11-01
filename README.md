@@ -6,30 +6,30 @@ The current audio and MIDI profile was tested with a **MeloAudio Tone Shifter Me
 
 ## Downloads
 
-Version 1.0.2 removes the bundled SooperLooper window title and fits its full control panel using its reported minimum size. The outer border is now three pixels wide. It retains the 1.0.1 USB audio fix: Zita bridges built against ALSA PCMI 0.6.1. The original 1.0.0 audio bundle has been withdrawn.
+Version 1.0.3 removes the bundled SooperLooper window title and sizes its panel from the visible controls, eliminating the obsolete menu/scroller padding below them. The outer border is three pixels wide. It retains the 1.0.1 USB audio fix: Zita bridges built against ALSA PCMI 0.6.1. The original 1.0.0 audio bundle has been withdrawn.
 
 All packages below contain the **same self-contained runtime**, including SooperLooper, JACK, the performance GUI and their libraries. They do not replace the system's SooperLooper installation.
 
 | Format | Target | Download |
 |---|---|---|
-| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.2/TSMA-Kit-1.0.2-x86_64.AppImage) |
-| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.2/tsma-kit_1.0.2_amd64.deb) |
-| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.2/tsma-kit-1.0.2-1.x86_64.rpm) |
-| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.2/SHA256SUMS) |
-| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.2/TSMA-Kit-1.0.2-runtime-sources.tar.gz) |
+| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/TSMA-Kit-1.0.3-x86_64.AppImage) |
+| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/tsma-kit_1.0.3_amd64.deb) |
+| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/tsma-kit-1.0.3-1.x86_64.rpm) |
+| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/SHA256SUMS) |
+| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/TSMA-Kit-1.0.3-runtime-sources.tar.gz) |
 
 A 64-bit desktop with **glibc 2.35 or newer**, systemd user services, D-Bus and X11/XWayland is required. This covers Ubuntu 22.04+, Mint 21+, Debian 12+ and recent Fedora releases. Runtime checks have passed on Ubuntu 22.04/24.04, Debian 12 and Fedora 44; audio hardware and live latency still need validation on each PC. ARM and older glibc releases are not supported.
 
 ```bash
 # Ubuntu / Mint / Debian
-sudo apt install ./tsma-kit_1.0.2_amd64.deb
+sudo apt install ./tsma-kit_1.0.3_amd64.deb
 
 # Fedora
-sudo dnf install ./tsma-kit-1.0.2-1.x86_64.rpm
+sudo dnf install ./tsma-kit-1.0.3-1.x86_64.rpm
 
 # Portable bundle
-chmod +x TSMA-Kit-1.0.2-x86_64.AppImage
-./TSMA-Kit-1.0.2-x86_64.AppImage
+chmod +x TSMA-Kit-1.0.3-x86_64.AppImage
+./TSMA-Kit-1.0.3-x86_64.AppImage
 ```
 
 The native packages add an application-menu entry and a desktop shortcut. For another desktop user, the shortcut is created at login or with `tsma-kit --install-desktop`. The AppImage creates its shortcut on first use. If FUSE is unavailable, run the AppImage with `--appimage-extract-and-run`; native packages use an extraction cache and do not require FUSE.
