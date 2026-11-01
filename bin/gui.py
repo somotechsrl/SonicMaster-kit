@@ -47,6 +47,8 @@ class Container:
   header=Gtk.HeaderBar(title='TSMA Kit',show_close_button=True)
   self.window.set_titlebar(header)
   drums=Gtk.Button(label='Drums');drums.set_tooltip_text('Choose and load a drum backing track');drums.connect('clicked',self.choose_drums);header.pack_start(drums)
+  check=Gtk.Button(label='Check');check.set_tooltip_text('Verify and configure the pedal controllers');check.connect('clicked',self.check_pedals);header.pack_start(check)
+  self.check_window=None
   style=Gtk.CssProvider()
   style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:3px solid #52606d; border-radius:8px;}')
   Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),style,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -68,6 +70,16 @@ class Container:
   self.window.show_all();self.area.grab_focus()
   GLib.idle_add(self.start)
   GLib.timeout_add(250,self.tick)
+ def check_pedals(self,*_):
+  if self.check_window is not None:
+   self.check_window.present();return
+  try:
+   from pedal_check import PedalCheck
+   self.check_window=PedalCheck(self.window)
+   self.check_window.connect('destroy',lambda *_:setattr(self,'check_window',None))
+  except Exception as exc:
+   notice=Gtk.MessageDialog(parent=self.window,message_type=Gtk.MessageType.INFO,buttons=Gtk.ButtonsType.CLOSE,text=str(exc))
+   notice.run();notice.destroy()
  def choose_drums(self,*_):
   dialog=Gtk.FileChooserDialog(title='Drum backing tracks',parent=self.window,action=Gtk.FileChooserAction.OPEN)
   dialog.add_buttons('Cancel',Gtk.ResponseType.CANCEL,'Load',Gtk.ResponseType.OK)
@@ -156,6 +168,9 @@ class Container:
   return True
  def close(self,*_):
   if self.closed:return False
+  if self.check_window is not None and self.check_window.busy:
+   self.check_window.present();self.check_window.log('Finish the pedal configuration transaction before closing the kit.');return True
+  if self.check_window is not None:self.check_window.destroy()
   self.closed=True;STATE.unlink(missing_ok=True)
   if self.ready:
    # Close gracefully while X is still alive so application settings can save.

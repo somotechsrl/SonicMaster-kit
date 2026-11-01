@@ -6,30 +6,30 @@ The current audio and MIDI profile was tested with a **MeloAudio Tone Shifter Me
 
 ## Downloads
 
-Version 1.0.3 removes the bundled SooperLooper window title and sizes its panel from the visible controls, eliminating the obsolete menu/scroller padding below them. The outer border is three pixels wide. It retains the 1.0.1 USB audio fix: Zita bridges built against ALSA PCMI 0.6.1. The original 1.0.0 audio bundle has been withdrawn.
+Version 1.0.4 adds **Check**, a pedal diagnostic/programming utility with guided tests, Tone Shifter software MIDI learn and verified Chocolate USB programming. It retains the compact SooperLooper panel and three-pixel outer border. It retains the 1.0.1 USB audio fix: Zita bridges built against ALSA PCMI 0.6.1. The original 1.0.0 audio bundle has been withdrawn.
 
 All packages below contain the **same self-contained runtime**, including SooperLooper, JACK, the performance GUI and their libraries. They do not replace the system's SooperLooper installation.
 
 | Format | Target | Download |
 |---|---|---|
-| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/TSMA-Kit-1.0.3-x86_64.AppImage) |
-| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/tsma-kit_1.0.3_amd64.deb) |
-| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/tsma-kit-1.0.3-1.x86_64.rpm) |
-| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/SHA256SUMS) |
-| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.3/TSMA-Kit-1.0.3-runtime-sources.tar.gz) |
+| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.4/TSMA-Kit-1.0.4-x86_64.AppImage) |
+| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.4/tsma-kit_1.0.4_amd64.deb) |
+| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.4/tsma-kit-1.0.4-1.x86_64.rpm) |
+| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.4/SHA256SUMS) |
+| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.4/TSMA-Kit-1.0.4-runtime-sources.tar.gz) |
 
 A 64-bit desktop with **glibc 2.35 or newer**, systemd user services, D-Bus and X11/XWayland is required. This covers Ubuntu 22.04+, Mint 21+, Debian 12+ and recent Fedora releases. Runtime checks have passed on Ubuntu 22.04/24.04, Debian 12 and Fedora 44; audio hardware and live latency still need validation on each PC. ARM and older glibc releases are not supported.
 
 ```bash
 # Ubuntu / Mint / Debian
-sudo apt install ./tsma-kit_1.0.3_amd64.deb
+sudo apt install ./tsma-kit_1.0.4_amd64.deb
 
 # Fedora
-sudo dnf install ./tsma-kit-1.0.3-1.x86_64.rpm
+sudo dnf install ./tsma-kit-1.0.4-1.x86_64.rpm
 
 # Portable bundle
-chmod +x TSMA-Kit-1.0.3-x86_64.AppImage
-./TSMA-Kit-1.0.3-x86_64.AppImage
+chmod +x TSMA-Kit-1.0.4-x86_64.AppImage
+./TSMA-Kit-1.0.4-x86_64.AppImage
 ```
 
 The native packages add an application-menu entry and a desktop shortcut. For another desktop user, the shortcut is created at login or with `tsma-kit --install-desktop`. The AppImage creates its shortcut on first use. If FUSE is unavailable, run the AppImage with `--appimage-extract-and-run`; native packages use an extraction cache and do not require FUSE.
@@ -80,7 +80,37 @@ ToneLib handles the sound; SooperLooper records, plays and overdubs loops. The k
 
 To record a replacement loop: **D → A → play your guitar → A**. Page selection on the TS Mega is reported by the next A–D message. The current mapping controls up to eight effects in chain order.
 
-The Chocolate must use its saved Custom CC profile: MIDI channel 1, CC 80/81/82/83 for A/B/C/D, momentary 127/0. The kit handles presses and ignores releases. It does not reprogram the hardware.
+The Chocolate must use its saved Custom CC profile: MIDI channel 1, CC 80/81/82/83 for A/B/C/D, momentary 127/0. The performance adapter handles presses and ignores releases. Hardware programming is an explicit operation in the Check utility described below.
+
+## Pedal Check and programming
+
+Open **Check**, beside **Drums** in the kit header. The utility detects the **Tone Shifter Mega (TSMEGA)** and **standard USB Chocolate (SINCO)** by name, monitors their actual MIDI messages and follows USB reconnections. It does not start Ardour or change audio routing.
+
+| Device | Verification | Configuration |
+|---|---|---|
+| Tone Shifter Mega | Guided test of 1/2 and A–D on both effect pages; live CC/PC messages | Learn the previous/next CCs and the page-1 A PC offset; save software mappings for the kit. Hardware USB programming is not implemented. |
+| Standard Chocolate | Read its Custom CC settings, compare them with the kit profile, and test A–D | Apply the kit looper profile over USB, or restore its Custom CC fields from a utility backup. |
+
+**Test mode** temporarily suspends pedal actions in the kit adapter, so testing D does not clear your loop and testing 1/2 does not switch presets. Audio continues. Disable test mode or close Check to resume normal control. A short-lived lease also restores pedal actions within a few seconds if the utility crashes. Test mode requires the updated kit adapter; the utility rejects an older running adapter rather than pretending its actions are paused.
+
+On the **Tone Shifter** tab, use **Learn** for button 1, button 2 or page-1 A, then **Save Tone Shifter mappings**. The adapter reloads the saved software profile within two seconds. This changes the kit's interpretation of MIDI, not the pedal firmware. The expected hardware layout is 1/2 sending separate preset CCs, A–D sending consecutive Program Changes, and 3/4 selecting internal banks. Selecting 3/4 alone may send no MIDI: the following A–D message identifies the page. Both values from the existing latched 1/2 profile count as presses; a different momentary press/release profile should be configured on the pedal itself.
+
+On the **Chocolate** tab, connect the standard controller over **USB in U mode** and select **Read / verify**. **Apply TSMA looper profile** writes Custom CC mode 7, channel 1, CC80–83 and momentary switches. Before writing, it backs up the first 1009-byte Custom CC settings region. Each changed field is read back and compared with the complete region; an unexpected change stops programming. Only mode, channel and the four CC/latch pairs can be written. Advanced banks, firmware, Bluetooth and Chocolate Plus programming are outside this utility. A readback confirms the current configuration; unplug/replug and run the guided test to verify persistence and physical switch behavior.
+
+**Restore backup** restores those ten supported fields, with another backup first. It is not a full firmware or complete-device restore. **Save report** records device discovery, observed messages and completed test steps; a connected device is not automatically marked as having passed its physical test.
+
+Software mappings live in `config/pedals.conf` inside the writable kit data folder and survive package upgrades. Backups and reports live in `state/pedals/` and are excluded from GitHub/releases. Existing ToneLib presets, registration and loop audio are not changed by the utility.
+
+```bash
+# Installed DEB/RPM or AppImage: diagnostics without starting the audio kit
+tsma-kit --check
+./TSMA-Kit-VERSION-x86_64.AppImage --check
+
+# Source checkout
+./check-pedals
+```
+
+The tool uses the bundled Python/GTK and ALSA libraries; it needs no Wine, Bluetooth manager or extra Python MIDI packages. The Chocolate SysEx protocol is documented by [cbix/mvave-chocolate-sysex](https://github.com/cbix/mvave-chocolate-sysex).
 
 ## Install and run
 

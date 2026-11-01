@@ -65,42 +65,30 @@ Le copie complete prima delle pagine e il rapporto sono nella cartella di backup
 `./tsmega-midi --self-test` controlla la traduzione. L'adattatore non scrive
 impostazioni sul controller. Backup iniziale: `../backup-tsmega-20261101-103240/`.
 
-## Chocolate M-Wave: looper e strumenti
+## Chocolate M-Wave: SooperLooper
 
-Il Chocolate standard USB (`SINCO`, diverso dal Plus) è programmato in Custom CC
-(mode 7), canale 1, CC80/81/82/83 su A/B/C/D, latch 0 (127 alla pressione,
-0 al rilascio). La lettura del dispositivo ha verificato ogni campo scritto.
-Il driver MIDI trova anche SINCO per nome, ripristina la sottoscrizione ogni
-due secondi e inoltra solo le pressioni positive verso ToneLib sul canale 16.
-Non inoltra i rilasci: ogni pressione esegue una sola azione.
+Il Chocolate standard USB (`SINCO`, diverso dal Plus) usa Custom CC mode 7,
+canale 1, CC80/81/82/83 momentanei (127 pressione, 0 rilascio):
 
-- A: looper Rec/Play (CC80, comando ToneLib 0x74).
-- B: stop looper (CC81, comando 0x75).
-- C: avvio/stop del metronomo (CC82, comando Rhythm Playback 0x65).
-- D: apre/chiude l'accordatore tramite `tonelib-tuner.py`.
+- A: Rec/Play SooperLooper.
+- B: Overdub on/off.
+- C: Pause/Resume.
+- D: Clear.
 
-Il Rhythm Player usa solo il metronomo (`rhythm.cfg` type.id=1), senza batteria.
-Il looper ha Autostart disabilitato: registra alla pressione di A. I comandi sono
-globali, indipendenti dal preset. Le pagine effetti del TS Mega restano invariate.
+L'adattatore inoltra le pressioni al socket del kit e ignora i rilasci.
+Queste assegnazioni sostituiscono il precedente controllo del looper ToneLib,
+del metronomo e del tuner. Le due pagine del Tone Shifter restano indipendenti.
 
-ToneLib non espone l'accordatore nelle sue assegnazioni MIDI. Per D l'adattatore
-avvia il helper Python, che identifica PID/classe delle finestre X11 di ToneLib.
-Per aprire verifica l'icona del tuner sulla barra, porta avanti solo ToneLib e
-preme l'icona; per chiudere verifica titolo, proprietario e dimensioni del dialogo.
-Il mouse torna alla posizione precedente. Un lock evita pressioni sovrapposte.
-Non vengono inviati tasti globali. Serve la vista principale con la barra visibile:
-con Preferenze o altri dialoghi aperti il riconoscimento può rifiutare l'azione.
-La forma dell'icona e la geometria del dialogo sono verificate per ToneLib 4.9.
+Il pulsante **Check**, accanto a **Drums**, apre verifica MIDI, test guidato,
+apprendimento delle assegnazioni software del Tone Shifter e programmazione
+USB del Chocolate. La programmazione salva un backup e verifica ogni campo
+con una rilettura. I dettagli e i limiti sono nel README principale, sezione
+**Pedal Check and programming**.
 
-Verifica fisica del 1 novembre 2026: Chocolate scollegato e ricollegato,
-sottoscrizione SINCO ripristinata senza riavviare adattatore o ToneLib, profilo
-USB riletto e invariato. Apertura e chiusura del tuner dal pedale confermate.
-
-Backup hardware: `~/.local/share/chocolate-plus/backups/20261101-124353.*`,
-`chocolate-looper-before-first-page.*` e `chocolate-looper-final.*`.
-Il protocollo standard è descritto nei progetti
-[cbix/mvave-chocolate-sysex](https://github.com/cbix/mvave-chocolate-sysex) e
-[WilsonNet/mvave-chocolate-tui](https://github.com/WilsonNet/mvave-chocolate-tui).
+Il test sospende le azioni MIDI dell'adattatore tramite una lease temporanea;
+non ferma l'audio. Le assegnazioni software sono in `config/pedals.conf` e
+vengono rilette ogni due secondi. L'adattatore di esecuzione non programma
+mai direttamente l'hardware.
 
 `../Drivers` è un file eseguibile, non un symlink. Avvia `UMC`, `A100`, `HDMI`
 e il ponte MIDI. Ogni dispositivo ha lock e gestione dei propri processi.

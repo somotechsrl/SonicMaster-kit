@@ -31,7 +31,7 @@ def sync_payload():
   rel=src.relative_to(PAYLOAD)
   if not src.is_file() or '__pycache__' in rel.parts or rel.parts[0] in ('state','log'):continue
   dest=KIT/rel
-  preserve=rel.parts[:2]==('config','Gadwin') or str(rel) in ('config/kit.json','config/portable-drivers.conf')
+  preserve=rel.parts[:2]==('config','Gadwin') or str(rel) in ('config/kit.json','config/portable-drivers.conf','config/pedals.conf')
   if preserve and dest.exists():continue
   dest.parent.mkdir(parents=True,exist_ok=True)
   if not dest.exists() or src.read_bytes()!=dest.read_bytes():shutil.copy2(src,dest)
@@ -111,15 +111,22 @@ def self_test():
  for name in ('sooperlooper','slgui','jackdbus','jack_control','jack_lsp','jack_samplerate','zita-a2j','zita-j2a','Xephyr','openbox','xauth','xprop','xwininfo','xrandr','wmctrl','ffmpeg'):
   if not shutil.which(name):raise RuntimeError('Missing bundled tool: '+name)
  run(str(PAYLOAD/'config/Jack/Drivers.d/tsmega-midi'),'--self-test');ctypes.CDLL(str(PAYLOAD/'vendor/slgui-lock.so'))
+ sys.path.insert(0,str(PAYLOAD/'bin'))
+ from pedals import load_profile,DEFAULT,write_message
+ from alsa_midi import Sequencer
+ if load_profile(PAYLOAD/'config/pedals.conf')!=DEFAULT:raise RuntimeError('Invalid bundled pedal profile.')
+ write_message(0,7)
  print('TSMA Kit',VERSION,'bundle checks passed; no audio device was opened.')
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--install-desktop',action='store_true');parser.add_argument('--stop',action='store_true');parser.add_argument('--save-loop',action='store_true');parser.add_argument('--import-drums',metavar='SOURCE');args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--install-desktop',action='store_true');parser.add_argument('--stop',action='store_true');parser.add_argument('--save-loop',action='store_true');parser.add_argument('--import-drums',metavar='SOURCE');parser.add_argument('--check',action='store_true',help='Open pedal verification and programming without starting the audio kit');args=parser.parse_args()
  if args.self_test:self_test();return
  if os.geteuid()==0:raise RuntimeError('Start TSMA Kit as your desktop user, not root.')
  DATA.mkdir(parents=True,exist_ok=True)
  if args.install_desktop:print(desktop_icon());return
  if args.stop:run(str(KIT/'stop-tsma'));return
  if args.save_loop:run(str(KIT/'save-loop'));return
+ if args.check:
+  sync_payload();run(os.environ['TSMA_PYTHON'],str(KIT/'bin/pedal_check.py'));return
  if args.import_drums:
   sync_payload();run(os.environ['TSMA_PYTHON'],str(KIT/'bin/import_drums.py'),args.import_drums,str(KIT/'BackingTracks/Drums'));return
  if active_gui():return

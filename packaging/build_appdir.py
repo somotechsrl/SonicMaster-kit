@@ -7,7 +7,7 @@ if APP.exists():shutil.rmtree(APP)
 APP.mkdir(parents=True);BASE=APP/'usr/share/tsma-kit';KIT=BASE/'kit';KIT.mkdir(parents=True)
 for name in ('bin','src','config','tests','LICENSES'):
  shutil.copytree(SOURCE/name,KIT/name,ignore=shutil.ignore_patterns('__pycache__','tsmega-midi','*.so','*.reginfo','*.wav','*.flac','*.mp3'))
-for name in ('start-tsma','stop-tsma','install-tsma','save-loop','save-config','import-drums','README.md','NOTICE','icona.svg'):shutil.copy2(SOURCE/name,KIT/name)
+for name in ('start-tsma','stop-tsma','install-tsma','save-loop','save-config','import-drums','check-pedals','README.md','NOTICE','icona.svg'):shutil.copy2(SOURCE/name,KIT/name)
 for name in ('state','log','vendor'):(KIT/name).mkdir(exist_ok=True)
 subprocess.run(['cc','-O2',str(KIT/'config/Jack/Drivers.d/tsmega-midi.c'),'-Wl,-l:libasound.so.2','-o',str(KIT/'config/Jack/Drivers.d/tsmega-midi')],check=True)
 subprocess.run(['cc','-O2','-shared','-fPIC',str(KIT/'src/slgui-lock.c'),'-Wl,-l:libgtk-3.so.0','-Wl,-l:libgobject-2.0.so.0','-Wl,-l:libglib-2.0.so.0','-o',str(KIT/'vendor/slgui-lock.so')],check=True)

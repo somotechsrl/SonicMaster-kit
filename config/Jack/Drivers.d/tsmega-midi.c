@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,11 +40,40 @@ extern unsigned int snd_seq_port_info_get_capability(const void *);
 extern int snd_seq_query_next_port(snd_seq_t *,void *);
 static volatile sig_atomic_t running=1;
 static void stop(int s){(void)s;running=0;}
+static int previous_cc=22,next_cc=25,effect_offset=0;
+static void load_profile(void){
+ char path[PATH_MAX];const char *override=getenv("TSMA_PEDAL_PROFILE");
+ if(override){if(snprintf(path,sizeof(path),"%s",override)>=(int)sizeof(path))return;}
+ else{
+  ssize_t length=readlink("/proc/self/exe",path,sizeof(path)-1);if(length<=0)return;path[length]=0;
+  for(int i=0;i<3;i++){char *slash=strrchr(path,'/');if(!slash)return;*slash=0;}
+  size_t n=strlen(path);if(n+sizeof("/pedals.conf")>sizeof(path))return;memcpy(path+n,"/pedals.conf",sizeof("/pedals.conf"));
+ }
+ FILE *file=fopen(path,"r");if(!file)return;
+ int prev=22,next=25,offset=0,value;char line[256],key[64];
+ while(fgets(line,sizeof(line),file)){
+  if(sscanf(line," %63[a-z_] = %d",key,&value)!=2)continue;
+  if(!strcmp(key,"previous_cc"))prev=value;
+  else if(!strcmp(key,"next_cc"))next=value;
+  else if(!strcmp(key,"effect_offset"))offset=value;
+ }
+ fclose(file);
+ if(prev>=0&&prev<128&&next>=0&&next<128&&prev!=next&&offset>=0&&offset<8){previous_cc=prev;next_cc=next;effect_offset=offset;}
+}
+static int checking(void){
+ char path[PATH_MAX];const char *runtime=getenv("XDG_RUNTIME_DIR");char fallback[64];
+ if(!runtime){snprintf(fallback,sizeof(fallback),"/run/user/%u",(unsigned)getuid());runtime=fallback;}
+ if(snprintf(path,sizeof(path),"%s/jack-hooks-%u/tsma-pedal-check.lease",runtime,(unsigned)getuid())>=(int)sizeof(path))return 0;
+ struct stat st;if(lstat(path,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid())return 0;
+ FILE *file=fopen(path,"r");if(!file)return 0;long expires=0,pid=0;
+ int read= fscanf(file,"%ld %ld",&expires,&pid);fclose(file);long now=(long)time(0);
+ return read==2&&expires>=now&&expires<=now+5&&pid>1&&kill((pid_t)pid,0)==0;
+}
 static int mapped(const struct snd_seq_event *e){
- if(e->type==SNDRV_SEQ_EVENT_PGMCHANGE)return 24+(e->data.control.value%8);
+ if(e->type==SNDRV_SEQ_EVENT_PGMCHANGE)return 24+((e->data.control.value-effect_offset+128)%8);
  if(e->type==SNDRV_SEQ_EVENT_CONTROLLER){
-  if(e->data.control.param==22)return 20;
-  if(e->data.control.param==25)return 21;
+  if(e->data.control.param==(unsigned)previous_cc)return 20;
+  if(e->data.control.param==(unsigned)next_cc)return 21;
  }
  return -1;
 }
@@ -112,6 +142,11 @@ int main(int argc,char **argv){
    int want=(cc>=80 && cc<=83 && value>0)?cc:-1;
    if(mapped_chocolate(&e)!=want)return 1;
   }
+  previous_cc=5;next_cc=6;effect_offset=4;
+  e.type=SNDRV_SEQ_EVENT_CONTROLLER;e.data.control.param=5;if(mapped(&e)!=20)return 1;
+  e.data.control.param=6;if(mapped(&e)!=21)return 1;
+  e.type=SNDRV_SEQ_EVENT_PGMCHANGE;
+  for(int n=0;n<128;n++){e.data.control.value=n;if(mapped(&e)!=24+(n-4+128)%8)return 1;}
   puts("TSMEGA and Chocolate mapping checks passed");return 0;
  }
  int trace=getenv("TSMEGA_MIDI_TRACE")!=NULL;
@@ -123,6 +158,7 @@ int main(int argc,char **argv){
  signal(SIGINT,stop);signal(SIGTERM,stop);signal(SIGCHLD,SIG_IGN);time_t scan=0;int client=-1,port=-1,target_client=-1,target_port=-1,chocolate_client=-1,chocolate_port=-1;
  while(running){
   if(time(0)>=scan){
+   load_profile();
    int c=-1,p=-1;
    if(find_device(s,"TSMEGA",&c,&p)){int rc=snd_seq_connect_from(s,in,c,p);if(rc>=0)fprintf(stderr,"Connected TSMEGA %d:%d\n",c,p);client=c;port=p;}
    else {client=-1;port=-1;}
@@ -140,6 +176,7 @@ int main(int argc,char **argv){
   if(rc<0){if(rc!=-EAGAIN&&rc!=-EINTR)fprintf(stderr,"MIDI input error %d\n",rc);usleep(5000);continue;}
   if(trace && e && e->source.client==client)fprintf(stderr,"RX type=%u src=%u:%u dest=%u:%u channel=%u param=%u value=%d target=%d:%d\n",e->type,e->source.client,e->source.port,e->dest.client,e->dest.port,e->data.control.channel,e->data.control.param,e->data.control.value,target_client,target_port);
   if(!e||e->dest.port!=in)continue;
+  if(checking())continue;
   int cc=-1;
   if(e->source.client==client && e->source.port==port)cc=mapped(e);
   else if(e->source.client==chocolate_client && e->source.port==chocolate_port)cc=mapped_chocolate(e);

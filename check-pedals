@@ -1,0 +1,3 @@
+#!/bin/sh
+kit_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "${TSMA_PYTHON:-/usr/bin/python3}" "$kit_dir/bin/pedal_check.py" "$@"
