@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 kit_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-"$kit_dir/Salva-loop"
+"$kit_dir/save-loop"
 sleep 1
-exec /usr/bin/python3 - "$kit_dir" <<'PY'
+exec "${TSMA_PYTHON:-/usr/bin/python3}" - "$kit_dir" <<'PY'
 import sys
 from pathlib import Path
 root=Path(sys.argv[1]);sys.path.insert(0,str(root/'bin'))

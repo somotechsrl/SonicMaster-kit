@@ -50,3 +50,14 @@ def fresh_qjackctl(home):
  if path.exists():return
  path.parent.mkdir(parents=True,exist_ok=True)
  path.write_text('''[Options]\nDBusEnabled=true\nJackDBusEnabled=true\nStartJack=false\nStopJack=false\nStartupScript=false\nPostStartupScript=false\nShutdownScript=false\nPostShutdownScript=false\n[Settings]\nDriver=dummy\nSampleRate=48000\nFrames=256\nPeriods=1\nRealtime=true\nMidiDriver=none\nServer=jackd\n''')
+
+
+def configure_backing_library(home,library):
+ library=Path(library)
+ if not library.is_dir() or not any(p.suffix.lower() in ('.mp3','.wav','.flac') for p in library.rglob('*')):return
+ config=home/'.config/Gadwin/ToneLib GFX/_app.cfg';tree=ET.parse(config);root=tree.getroot()
+ value=root.find("VALUE[@name='recent_gfx.audio_dirs']")
+ if value is None:value=ET.SubElement(root,'VALUE',name='recent_gfx.audio_dirs',val='')
+ previous=value.get('val','').splitlines();folder=str(library.resolve())
+ value.set('val','\n'.join([folder]+[p for p in previous if p and p!=folder]))
+ tree.write(config,encoding='utf-8',xml_declaration=True)

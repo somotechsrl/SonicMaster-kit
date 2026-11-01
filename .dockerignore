@@ -1,0 +1,7 @@
+.git
+.cache-build
+dist
+__pycache__
+BackingTracks
+state
+log

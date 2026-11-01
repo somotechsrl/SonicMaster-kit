@@ -39,6 +39,7 @@ class Container:
   self.log=(ROOT/'log/gui.log').open('a')
   x,y,w,h=monitor_area();width=min(1506,w-80);height=min(920,h-130)
   self.window=Gtk.Window(title='TSMA Kit')
+  self.window.get_style_context().add_class('tsma-shell')
   root_info=call(['xwininfo','-root']).stdout
   visual_id=int(re.search(r'Visual: (0x[0-9a-fA-F]+)',root_info)[1],16)
   visual=GdkX11.X11Screen.lookup_visual(Gdk.Screen.get_default(),visual_id)
@@ -48,8 +49,9 @@ class Container:
   self.window.set_default_size(width,height);self.window.set_size_request(827,600)
   header=Gtk.HeaderBar(title='TSMA Kit',show_close_button=True)
   self.window.set_titlebar(header)
+  drums=Gtk.Button(label='Drums');drums.set_tooltip_text('Choose and load a drum backing track');drums.connect('clicked',self.choose_drums);header.pack_start(drums)
   style=Gtk.CssProvider()
-  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;}')
+  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:1px solid #52606d; border-radius:8px;}')
   Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),style,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   self.window.move(x+(w-width)//2,y+12)
   self.area=Gtk.DrawingArea();self.area.set_can_focus(True)
@@ -69,6 +71,24 @@ class Container:
   self.window.show_all();self.area.grab_focus()
   GLib.idle_add(self.start)
   GLib.timeout_add(250,self.tick)
+ def choose_drums(self,*_):
+  dialog=Gtk.FileChooserDialog(title='Drum backing tracks',parent=self.window,action=Gtk.FileChooserAction.OPEN)
+  dialog.add_buttons('Cancel',Gtk.ResponseType.CANCEL,'Load',Gtk.ResponseType.OK)
+  library=ROOT/'BackingTracks/Drums';dialog.set_current_folder(str(library if library.is_dir() else Path.home()))
+  audio=Gtk.FileFilter();audio.set_name('Audio backing tracks')
+  for pattern in ('*.mp3','*.wav','*.flac','*.ogg'):audio.add_pattern(pattern)
+  dialog.add_filter(audio);answer=dialog.run();file=dialog.get_filename();dialog.destroy()
+  if answer!=Gtk.ResponseType.OK or not file:return
+  pids=call(['pgrep','-x','ToneLib-GFX']).stdout.split()
+  for row in call(['wmctrl','-lpG'],env=self.env).stdout.splitlines():
+   fields=row.split(None,8)
+   if len(fields)<9 or fields[2] not in pids or fields[8] not in ('ToneLib GFX','N/A'):continue
+   x=int(fields[3])+int(fields[5])//2;y=int(fields[4])+int(fields[6])-80
+   result=call([os.environ.get('TSMA_PYTHON','/usr/bin/python3'),str(ROOT/'bin/xdnd.py'),fields[0],file,str(x),str(y)],env=self.env)
+   if result.returncode:
+    notice=Gtk.MessageDialog(parent=self.window,message_type=Gtk.MessageType.INFO,buttons=Gtk.ButtonsType.CLOSE,text='Open this file in ToneLib’s Backing track player')
+    notice.format_secondary_text(file);notice.run();notice.destroy()
+   return
  def start(self):
   try:
    width=self.area.get_allocated_width();height=self.area.get_allocated_height()

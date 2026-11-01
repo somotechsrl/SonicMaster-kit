@@ -12,7 +12,7 @@ def desktop_entry(root):
 Type=Application
 Name=TSMA Kit
 Comment=Chitarra · ToneLib GFX · SooperLooper
-Exec={quote(root/'Avvia-TSMA')}
+Exec={quote(root/'start-tsma')}
 Icon={root/'icona.svg'}
 Terminal=false
 Categories=AudioVideo;Audio;
@@ -21,7 +21,7 @@ Actions=SalvaLoop;
 
 [Desktop Action SalvaLoop]
 Name=Salva il loop
-Exec={quote(root/'Salva-loop')}
+Exec={quote(root/'save-loop')}
 '''
 
 def main():
@@ -68,7 +68,7 @@ def main():
  shutil.copy2(entry,applications/entry.name)
  env=os.environ.copy();env.pop('GIO_MODULE_DIR',None)
  if shutil.which('gio'):subprocess.run(['gio','set',str(entry),'metadata::trusted','true'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
- print('Pronto. Collega TS Mega e Chocolate, poi apri TSMA Kit dal desktop o esegui ./Avvia-TSMA.')
+ print('Pronto. Collega TS Mega e Chocolate, poi apri TSMA Kit dal desktop o esegui ./start-tsma.')
 
 if __name__=='__main__':
  try:main()

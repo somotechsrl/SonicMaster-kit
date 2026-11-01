@@ -2,7 +2,8 @@
 """Start the independent guitar kit; connect to the DAW only if present."""
 import fcntl,json,os,shutil,subprocess,sys,time
 from pathlib import Path
-from profile import install_profile,bind_midi,fresh_qjackctl
+from profile import install_profile,bind_midi,fresh_qjackctl,configure_backing_library
+PYTHON=os.environ.get('TSMA_PYTHON','/usr/bin/python3')
 ROOT=Path(__file__).resolve().parents[1];HOME=Path.home();CONFIG=json.loads((ROOT/'config/kit.json').read_text())
 RUNTIME=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'
 
@@ -11,7 +12,10 @@ def run(*args,check=True,timeout=8):
 def process(name):return run('pgrep','-x',name,check=False).returncode==0
 def unit(name,args):
  if run('systemctl','--user','is-active','--quiet',name+'.service',check=False).returncode==0:return
- display=[f'--setenv={key}={os.environ[key]}' for key in ('DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','XDG_RUNTIME_DIR','DBUS_SESSION_BUS_ADDRESS') if key in os.environ]
+ keys=['DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','XDG_RUNTIME_DIR','DBUS_SESSION_BUS_ADDRESS']
+ if os.environ.get('TSMA_BUNDLE_ROOT'):
+  keys+=['PATH','LD_LIBRARY_PATH','PYTHONHOME','PYTHONPATH','GI_TYPELIB_PATH','GIO_MODULE_DIR','GTK_PATH','GTK_EXE_PREFIX','XDG_DATA_DIRS','GSETTINGS_SCHEMA_DIR','JACK_DRIVER_DIR','SSL_CERT_FILE','TSMA_BUNDLE_ROOT','TSMA_PYTHON','GDK_PIXBUF_MODULEDIR','GDK_PIXBUF_MODULE_FILE']
+ display=[f'--setenv={key}={os.environ[key]}' for key in keys if key in os.environ]
  run('systemd-run','--user','--collect','--unit='+name,'--working-directory='+str(ROOT),*display,*args)
 def wait_for(predicate,seconds,message):
  deadline=time.monotonic()+seconds
@@ -31,7 +35,7 @@ def on_display(name,display):
 def main():
  required=['jack_control','sooperlooper','slgui','systemd-run','jack_lsp','jack_samplerate','zita-a2j','zita-j2a','Xephyr','openbox','xauth','xprop','wmctrl']
  missing=[x for x in required if not shutil.which(x)]
- if missing:raise RuntimeError('Esegui prima Installa-TSMA. Programmi mancanti: '+', '.join(missing))
+ if missing:raise RuntimeError('Esegui prima install-tsma. Programmi mancanti: '+', '.join(missing))
  # Initial configurations are a recovery copy, never overwrite live presets.
  install_profile(ROOT,HOME)
  fresh_qjackctl(HOME)
@@ -73,12 +77,12 @@ def main():
  if not ts_live():
   owner=owner_file.read_text().strip()
   unit('jack-tsmega',driver_env+['--setenv=JACK_DRIVERS_OWNER_PID='+owner,str(jackdir/'Drivers.d/TSMEGA')])
- unit('tsma-kit',['--property=Restart=on-failure','--property=RestartSec=2','/usr/bin/python3',str(ROOT/'bin/service.py')])
+ unit('tsma-kit',['--property=Restart=on-failure','--property=RestartSec=2',PYTHON,str(ROOT/'bin/service.py')])
  def looper_ready():
   try:return json.loads((RUNTIME/'tsma-kit.status.json').read_text()).get('ready',False)
   except (OSError,ValueError):return False
  wait_for(looper_ready,15,'SooperLooper non è pronto: controlla log/engine.log.')
- unit('tsma-gui',['/usr/bin/python3',str(ROOT/'bin/gui.py')])
+ unit('tsma-gui',[PYTHON,str(ROOT/'bin/gui.py')])
  gui={}
  def gui_ready():
   try:
@@ -91,10 +95,11 @@ def main():
   run('systemctl','--user','stop','tsma-tonelib.service')
   wait_for(lambda:not process('ToneLib-GFX'),8,'Chiudi la vecchia finestra ToneLib per aprirla nel contenitore.')
  if not process('ToneLib-GFX'):
+  configure_backing_library(HOME,ROOT/'BackingTracks/Drums')
   wait_for(lambda:bind_midi(HOME),8,'Adattatore MIDI non pronto.')
   tonelib=ROOT/'vendor/ToneLib-GFX'
   if not tonelib.exists():tonelib=Path(shutil.which('ToneLib-GFX') or '/nonexistent')
-  if not tonelib.exists():raise RuntimeError('ToneLib GFX assente: esegui Installa-TSMA.')
+  if not tonelib.exists():raise RuntimeError('ToneLib GFX assente: esegui install-tsma.')
   unit('tsma-tonelib',gui_env+[str(tonelib)])
  wait_for(lambda:process('ToneLib-GFX'),8,'ToneLib non è partito.')
  # Connect the UI to the dedicated engine; never let it spawn another one.

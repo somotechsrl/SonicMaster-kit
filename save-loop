@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-exec /usr/bin/python3 - <<'PY'
+exec "${TSMA_PYTHON:-/usr/bin/python3}" - <<'PY'
 import os,socket
 from pathlib import Path
 p=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'/'tsma-looper.sock'

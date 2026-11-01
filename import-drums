@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+kit_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+exec "${TSMA_PYTHON:-/usr/bin/python3}" "$kit_dir/bin/import_drums.py" "$@"

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=TSMA Kit
+Comment=Standalone guitar effects and live looping
+Exec=tsma-kit
+Icon=tsma-kit
+Terminal=false
+Categories=AudioVideo;Audio;
+StartupWMClass=TSMA-Kit

@@ -25,3 +25,6 @@ __pycache__/
 /dist/
 .env
 .env.*
+
+/.cache-build/
+/BackingTracks/

@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+if [[ ${1:-} == --install-desktop ]]; then
+    exec /usr/bin/python3 /usr/share/tsma-kit/install-desktop.py
+fi
+image=/usr/lib/tsma-kit/TSMA-Kit.AppImage
+version=$(cat /usr/share/tsma-kit/VERSION)
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tsma-kit/native-$version"
+mkdir -p -- "$cache_dir"
+(
+    flock 9
+    if [[ ! -x $cache_dir/squashfs-root/AppRun ]]; then
+        cd -- "$cache_dir"
+        "$image" --appimage-extract > /dev/null
+    fi
+) 9>"$cache_dir/extract.lock"
+export APPIMAGE="$image"
+exec "$cache_dir/squashfs-root/AppRun" "$@"
