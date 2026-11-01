@@ -5,17 +5,13 @@ from pathlib import Path
 import gi
 gi.require_version('Gtk','3.0');gi.require_version('GdkX11','3.0')
 from gi.repository import Gtk,Gdk,GdkX11,GLib
+from window_layout import sizes,minimum_size
 ROOT=Path(__file__).resolve().parents[1]
 RUNTIME=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'
 STATE=RUNTIME/'tsma-gui.json'
 
 def call(args,env=None,check=False):
  return subprocess.run(args,env=env,check=check,capture_output=True,text=True,timeout=5)
-
-def sizes(width,height):
- """Keep the verified looper panel complete and use the rest for ToneLib."""
- bottom=min(178,max(160,height//3))
- return (0,max(1,height-bottom),width,bottom),(0,0,width,max(1,height-bottom))
 
 def monitor_area():
  display=Gdk.Display.get_default();screen=Gdk.Screen.get_default()
@@ -36,6 +32,7 @@ def monitor_area():
 class Container:
  def __init__(self):
   self.server=self.wm=None;self.env=None;self.ready=False;self.closed=False;self.last=None;self.peer=None
+  self.looper_window=None;self.looper_min=(848,187)
   self.log=(ROOT/'log/gui.log').open('a')
   x,y,w,h=monitor_area();width=min(1506,w-80);height=min(920,h-130)
   self.window=Gtk.Window(title='TSMA Kit')
@@ -46,12 +43,12 @@ class Container:
   self.window.set_visual(visual)
   self.window.set_wmclass('tsma-kit','TSMA-Kit')
   self.window.set_icon_from_file(str(ROOT/'icona.svg'))
-  self.window.set_default_size(width,height);self.window.set_size_request(827,600)
+  self.window.set_default_size(width,height);self.window.set_size_request(848,600)
   header=Gtk.HeaderBar(title='TSMA Kit',show_close_button=True)
   self.window.set_titlebar(header)
   drums=Gtk.Button(label='Drums');drums.set_tooltip_text('Choose and load a drum backing track');drums.connect('clicked',self.choose_drums);header.pack_start(drums)
   style=Gtk.CssProvider()
-  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:1px solid #52606d; border-radius:8px;}')
+  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:3px solid #52606d; border-radius:8px;}')
   Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),style,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   self.window.move(x+(w-width)//2,y+12)
   self.area=Gtk.DrawingArea();self.area.set_can_focus(True)
@@ -139,8 +136,16 @@ class Container:
     fields=row.split(None,8)
     if len(fields)<9:continue
     title=fields[8];geom=None
-    if title.startswith('SooperLooper v '):geom=sizes(width,height)[0]
-    elif fields[2] in pids and title in ('ToneLib GFX','N/A'):geom=sizes(width,height)[1]
+    if title.startswith('SooperLooper v '):
+     if self.looper_window!=fields[0]:
+      hints=call(['xprop','-id',fields[0],'WM_NORMAL_HINTS'],env=self.env).stdout
+      self.looper_min=minimum_size(hints);self.looper_window=fields[0]
+      self.window.set_size_request(max(848,self.looper_min[0]),max(600,self.looper_min[1]+300))
+      # Older wxGTK builds use WM_CLASS Slgui instead of SooperLooper.
+      # This explicit hint also protects against a changed upstream class name.
+      call(['xprop','-id',fields[0],'-f','_MOTIF_WM_HINTS','32c','-set','_MOTIF_WM_HINTS','2, 0, 0, 0, 0'],env=self.env)
+     geom=sizes(width,height,self.looper_min[1])[0]
+    elif fields[2] in pids and title in ('ToneLib GFX','N/A'):geom=sizes(width,height,self.looper_min[1])[1]
     if geom is None:continue
     actual=tuple(map(int,(fields[3],fields[4],fields[5],fields[6])))
     if actual!=geom:
