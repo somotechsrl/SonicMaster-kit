@@ -8,116 +8,116 @@
 
 <focus>
   <focusNew>yes</focusNew>
-  
+
   <followMouse>no</followMouse>
-  
+
   <focusLast>yes</focusLast>
-  
+
   <underMouse>no</underMouse>
-  
+
   <focusDelay>200</focusDelay>
-  
+
   <raiseOnFocus>no</raiseOnFocus>
-  
+
 </focus>
 
 <placement>
   <policy>Smart</policy>
-  
+
   <center>yes</center>
-  
+
   <monitor>Primary</monitor>
-  
+
   <primaryMonitor>1</primaryMonitor>
-  
+
 </placement>
 
 <theme>
   <name>Clearlooks</name>
   <titleLayout>NLIMC</titleLayout>
-  
+
   <keepBorder>no</keepBorder>
   <animateIconify>yes</animateIconify>
   <font place="ActiveWindow">
     <name>sans</name>
     <size>8</size>
-    
+
     <weight>bold</weight>
-    
+
     <slant>normal</slant>
-    
+
   </font>
   <font place="InactiveWindow">
     <name>sans</name>
     <size>8</size>
-    
+
     <weight>bold</weight>
-    
+
     <slant>normal</slant>
-    
+
   </font>
   <font place="MenuHeader">
     <name>sans</name>
     <size>9</size>
-    
+
     <weight>normal</weight>
-    
+
     <slant>normal</slant>
-    
+
   </font>
   <font place="MenuItem">
     <name>sans</name>
     <size>9</size>
-    
+
     <weight>normal</weight>
-    
+
     <slant>normal</slant>
-    
+
   </font>
   <font place="ActiveOnScreenDisplay">
     <name>sans</name>
     <size>9</size>
-    
+
     <weight>bold</weight>
-    
+
     <slant>normal</slant>
-    
+
   </font>
   <font place="InactiveOnScreenDisplay">
     <name>sans</name>
     <size>9</size>
-    
+
     <weight>bold</weight>
-    
+
     <slant>normal</slant>
-    
+
   </font>
 </theme>
 
 <desktops>
-  
+
   <number>1</number>
   <firstdesk>1</firstdesk>
   <names>
-    
+
   </names>
   <popupTime>875</popupTime>
-  
+
 </desktops>
 
 <resize>
   <drawContents>yes</drawContents>
   <popupShow>Nonpixel</popupShow>
-  
+
   <popupPosition>Center</popupPosition>
-  
+
   <popupFixedPosition>
-    
+
 
     <x>10</x>
-    
+
     <y>10</y>
-    
+
   </popupFixedPosition>
 </resize>
 
@@ -131,21 +131,21 @@
 
 <dock>
   <position>TopLeft</position>
-  
+
   <floatingX>0</floatingX>
   <floatingY>0</floatingY>
   <noStrut>no</noStrut>
   <stacking>Above</stacking>
-  
+
   <direction>Vertical</direction>
-  
+
   <autoHide>no</autoHide>
   <hideDelay>300</hideDelay>
-  
+
   <showDelay>300</showDelay>
-  
+
   <moveButton>Middle</moveButton>
-  
+
 </dock>
 
 <keyboard>
@@ -153,13 +153,13 @@
 
 <mouse>
   <dragThreshold>1</dragThreshold>
-  
+
   <doubleClickTime>500</doubleClickTime>
-  
+
   <screenEdgeWarpTime>400</screenEdgeWarpTime>
-  
+
   <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
-  
+
 
   <context name="Frame">
     <mousebind button="A-Left" action="Press">
@@ -180,7 +180,7 @@
     </mousebind>
     <mousebind button="A-Right" action="Drag">
       <action name="Resize" />
-    </mousebind> 
+    </mousebind>
 
     <mousebind button="A-Middle" action="Press">
       <action name="Lower" />
@@ -429,10 +429,10 @@
   </context>
 
   <context name="Root">
-    
+
     <mousebind button="Middle" action="Press">
       <action name="ShowMenu"><menu>client-list-combined-menu</menu></action>
-    </mousebind> 
+    </mousebind>
     <mousebind button="Right" action="Press">
       <action name="ShowMenu"><menu>root-menu</menu></action>
     </mousebind>
@@ -455,24 +455,24 @@
 </mouse>
 
 <menu>
-  
 
-  
-  
+
+
+
   <file>/var/lib/openbox/debian-menu.xml</file>
   <file>menu.xml</file>
   <hideDelay>200</hideDelay>
-  
+
   <middle>no</middle>
-  
+
   <submenuShowDelay>100</submenuShowDelay>
-  
+
   <submenuHideDelay>400</submenuHideDelay>
-  
+
   <showIcons>yes</showIcons>
-  
+
   <manageDesktops>yes</manageDesktops>
-  
+
 </menu>
 
 <applications><application class="ToneLib GFX" type="normal"><decor>no</decor><focus>yes</focus></application><application class="SooperLooper" type="normal"><decor>no</decor><focus>yes</focus></application></applications></openbox_config>
