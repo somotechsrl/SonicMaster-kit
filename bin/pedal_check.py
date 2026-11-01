@@ -12,7 +12,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
 from alsa_midi import Sequencer, devices
 from pedals import (Chocolate, DEFAULT, LOOP_ACTIONS, atomic_write, describe,
-                    load_profile, restore_values, save_profile, summary)
+                    is_channel_message, load_profile, restore_values, save_profile, summary)
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = Path(os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')) / f'jack-hooks-{os.getuid()}'
@@ -32,6 +32,7 @@ def guard_available():
 class PedalCheck(Gtk.Window):
     def __init__(self, parent=None):
         super().__init__(title='TSMA Kit — Pedal Check', transient_for=parent)
+        self.set_position(Gtk.WindowPosition.CENTER_ON_PARENT if parent is not None else Gtk.WindowPosition.CENTER)
         self.set_default_size(900, 700)
         self.set_border_width(12)
         if (ROOT / 'icona.svg').exists(): self.set_icon_from_file(str(ROOT / 'icona.svg'))
@@ -236,7 +237,7 @@ class PedalCheck(Gtk.Window):
                 if not self.test_mode.get_active(): self.status.set_text('Live monitor: pedal actions remain active in the kit.')
             for source, raw in self.seq.pending():
                 name = self.seen.get(source)
-                if name is None or raw[0] == 0xF0: continue
+                if name is None or not is_channel_message(raw): continue
                 text, action = describe(name, raw, self.profile)
                 self.log(name + ' · ' + text)
                 self.observed.append({'device': name, 'raw': raw.hex(), 'description': text, 'time': time.time()})

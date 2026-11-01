@@ -7,7 +7,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bin'))
 from alsa_midi import devices
 from pedals import (Chocolate, DEFAULT, describe, kit_values, load_profile,
-                    restore_values, save_profile, summary, unpack_reply, write_message)
+                    is_channel_message, restore_values, save_profile, summary, unpack_reply, write_message)
 
 
 def frame_for(blob):
@@ -84,6 +84,22 @@ class PedalProtocol(unittest.TestCase):
     def test_detection_uses_names_not_fixed_client_numbers(self):
         text = 'Client 203 : "SINCO" [Kernel Legacy]\n  Port 2 : "SINCO MIDI 1" (RWeX) [In/Out]\nClient 204 : "TSMEGA ToneLib" [User Legacy]\n  Port 0 : "Controller input" (RWe-) [In/Out]\n'
         self.assertEqual(devices(text), [{'client': 203, 'port': 2, 'name': 'SINCO', 'port_name': 'SINCO MIDI 1'}])
+
+    def test_fragmented_sysex_is_not_pedal_traffic(self):
+        frame=frame_for(bytearray(1009))
+        for fragment in (frame[:90],frame[90:900],frame[900:],b'\xf7',b''):
+            self.assertFalse(is_channel_message(fragment))
+        self.assertTrue(is_channel_message(b'\xb0\x50\x7f'))
+        class Transport:
+            events=[]
+            def connect(self,*_):pass
+            def send(self,*_):
+                self.events=[((203,0),raw) for raw in (frame[:90],b'\xb0\x50\x7f',frame[90:900],frame[900:])]
+            def pending(self):
+                result,self.events=self.events,[]
+                return result
+        device=Chocolate(Transport(),{'name':'SINCO','client':203,'port':0})
+        self.assertEqual(device.exchange(b'\xf0\xf7',frame[:5]),frame)
 
 
 if __name__ == '__main__': unittest.main()

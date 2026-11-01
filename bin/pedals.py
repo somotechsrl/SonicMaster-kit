@@ -75,6 +75,12 @@ def describe(name, raw, profile=None):
     return raw.hex(' ').upper(), None
 
 
+def is_channel_message(raw):
+    # ALSA can split a long SysEx reply into chunks beginning with data bytes.
+    # Those fragments are configuration traffic, not pedal switch messages.
+    return bool(raw) and 0x80 <= raw[0] < 0xF0
+
+
 def write_message(address, value):
     if type(address) is not int or type(value) is not int or not 0 <= address <= 9:
         raise ValueError('Only the documented Custom CC fields 0..9 can be written.')
@@ -122,6 +128,7 @@ class Chocolate:
         while time.monotonic() < deadline:
             for source, raw in self.transport.pending():
                 if source != (self.target['client'], self.target['port']): continue
+                if not raw or (raw[0] >= 0x80 and raw[0] not in (0xF0, 0xF7)): continue
                 if raw.startswith(b'\xf0'): pending.clear()
                 pending.extend(raw)
                 if pending.startswith(prefix) and pending.endswith(b'\xf7'): return bytes(pending)
