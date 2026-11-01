@@ -11,7 +11,7 @@ for name in ('start-tsma','stop-tsma','install-tsma','save-loop','save-config','
 for name in ('state','log','vendor'):(KIT/name).mkdir(exist_ok=True)
 subprocess.run(['cc','-O2',str(KIT/'config/Jack/Drivers.d/tsmega-midi.c'),'-Wl,-l:libasound.so.2','-o',str(KIT/'config/Jack/Drivers.d/tsmega-midi')],check=True)
 subprocess.run(['cc','-O2','-shared','-fPIC',str(KIT/'src/slgui-lock.c'),'-Wl,-l:libgtk-3.so.0','-Wl,-l:libgobject-2.0.so.0','-Wl,-l:libglib-2.0.so.0','-o',str(KIT/'vendor/slgui-lock.so')],check=True)
-shutil.copy2(SOURCE/'packaging/runtime.py',BASE/'runtime.py');(BASE/'VERSION').write_text(VERSION+'\n');shutil.copy2('/etc/ssl/certs/ca-certificates.crt',BASE/'ca-bundle.crt')
+shutil.copy2(SOURCE/'packaging/runtime.py',BASE/'runtime.py');shutil.copy2(SOURCE/'.cache-build/custom-dsp/custom-dsp-builds.json',BASE/'custom-dsp-builds.json');(BASE/'VERSION').write_text(VERSION+'\n');shutil.copy2('/etc/ssl/certs/ca-certificates.crt',BASE/'ca-bundle.crt')
 shutil.copy2(SOURCE/'packaging/AppRun',APP/'AppRun');(APP/'AppRun').chmod(0o755)
 shutil.copy2(SOURCE/'icona.svg',APP/'tsma-kit.svg')
 import gi

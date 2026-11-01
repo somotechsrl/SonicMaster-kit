@@ -11,4 +11,7 @@ with tarfile.open(DIST/f'TSMA-Kit-{VERSION}-runtime-sources.tar.gz','w:gz',compr
  for file in sorted(folder.iterdir()):
   if file.is_file():archive.add(file,arcname=file.name)
  archive.add(DIST/'TSMA-Kit.AppDir/usr/share/tsma-kit/runtime-packages.json',arcname='runtime-packages.json')
+ for file in sorted((ROOT/'.cache-build/custom-dsp').glob('*.tar.bz2')):archive.add(file,arcname='custom-dsp/'+file.name)
+ archive.add(ROOT/'.cache-build/custom-dsp/custom-dsp-builds.json',arcname='custom-dsp/custom-dsp-builds.json')
+ archive.add(ROOT/'packaging/build_dsp.py',arcname='custom-dsp/build_dsp.py')
 print('Runtime source archive ready.')

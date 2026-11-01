@@ -3,7 +3,6 @@ on:
   push:
     branches: [main]
     paths: [VERSION, .github/workflows/release.yml]
-    tags: ['v*']
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,12 +15,17 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Withdraw the superseded audio bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit v1.0.0 --draft || true
       - name: Build the portable runtime and native installers with SVG support
         run: |
           docker build -f packaging/Dockerfile.bundle -t tsma-kit-builder .
           docker run --rm -v "$PWD:/src" tsma-kit-builder bash -e -c '
             python3 -m unittest discover -s tests -q
             python3 -m unittest discover -s config/Jack/Drivers.d/tests -q
+            python3 packaging/build_dsp.py
             python3 packaging/build_appdir.py
             python3 packaging/complete_manifest.py
             mkdir -p .cache-build
