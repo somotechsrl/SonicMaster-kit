@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Build the portable runtime and native installers
+      - name: Build the portable runtime and native installers with SVG support
         run: |
           docker build -f packaging/Dockerfile.bundle -t tsma-kit-builder .
           docker run --rm -v "$PWD:/src" tsma-kit-builder bash -e -c '
