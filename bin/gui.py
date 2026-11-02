@@ -2,11 +2,15 @@
 """One native host window containing the two applications on a private X display."""
 import fcntl,json,os,re,secrets,signal,subprocess,time
 from pathlib import Path
+# Xephyr's parent and the embedded windows require X11 window IDs. Select
+# XWayland before GTK initializes, including when launched directly or by systemd.
+os.environ['GDK_BACKEND']='x11'
 import gi
 gi.require_version('Gtk','3.0');gi.require_version('GdkX11','3.0')
-from gi.repository import Gtk,Gdk,GdkX11,GLib
+from gi.repository import Gtk,Gdk,GdkX11,GLib,Pango
 from window_layout import sizes,minimum_size,load_geometry,save_geometry,fit_geometry
 from effect_bank import EffectBankMonitor
+from effect_names import EffectNameReader
 ROOT=Path(__file__).resolve().parents[1]
 RUNTIME=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'
 STATE=RUNTIME/'tsma-gui.json'
@@ -65,8 +69,10 @@ class Container:
   self.drums_process=None
   check=Gtk.Button(label='Check');check.set_tooltip_text('Verify and configure the pedal controllers');check.connect('clicked',self.check_pedals);header.pack_start(check)
   self.bank_monitor=EffectBankMonitor(ROOT/'config/pedals.conf')
+  self.effect_names=EffectNameReader(self.log);self.tone_window=None
   self.bank_display=Gtk.Button(label='Banco: — · Effetto: —');self.bank_display.set_margin_start(6)
   self.bank_display.set_focus_on_click(False);self.bank_display.get_child().set_width_chars(30)
+  self.bank_display.get_child().set_max_width_chars(56);self.bank_display.get_child().set_ellipsize(Pango.EllipsizeMode.END)
   self.bank_display.get_style_context().add_class('tsma-bank')
   self.bank_display.connect('clicked',self.bank_details)
   header.pack_start(self.bank_display)
@@ -95,14 +101,17 @@ class Container:
   GLib.idle_add(self.start)
   GLib.timeout_add(250,self.tick)
  def update_bank(self):
-  bank=self.bank_monitor.poll();effect=self.bank_monitor.effect;status=(self.bank_monitor.connected,effect)
+  bank=self.bank_monitor.poll();effect=self.bank_monitor.effect
+  name=self.effect_names.update(effect,self.bank_monitor.generation,self.tone_window,self.env)
+  status=(self.bank_monitor.connected,effect,name)
   if status==self.bank_status:return
   self.bank_status=status
-  self.bank_display.set_label((f'Banco: {bank*4+1}–{bank*4+4} · Effetto: {effect%4+1} → {effect+1}'+(' · non assegnato' if effect>=8 else '')) if bank is not None else 'Banco: — · Effetto: —')
-  self.bank_display.set_tooltip_text(('Ultimo effetto azionato: posizione nel banco → numero assoluto. Il banco lampeggiante sulla pedaliera si aggiorna qui dopo A–D.'+(' Oltre l’effetto 8, ToneLib non ha un controllo assegnato.' if effect>=8 else '')) if effect is not None else 'Premi A–D per rilevare il banco e l’effetto.' if self.bank_monitor.connected else 'Tone Shifter non collegata.')
+  self.bank_display.set_label((f'Banco: {bank*4+1}–{bank*4+4} · Effetto: {effect%4+1} → {effect+1}'+(' · '+name if name else '')+(' · non assegnato' if effect>=8 else '')) if bank is not None else 'Banco: — · Effetto: —')
+  self.current_effect_name=name
+  self.bank_display.set_tooltip_text(((name+'\n' if name else '')+'Ultimo effetto azionato: posizione nel banco → numero assoluto. Il banco lampeggiante sulla pedaliera si aggiorna qui dopo A–D.'+(' Oltre l’effetto 8, ToneLib non ha un controllo assegnato.' if effect>=8 else '')) if effect is not None else 'Premi A–D per rilevare il banco e l’effetto.' if self.bank_monitor.connected else 'Tone Shifter non collegata.')
  def bank_details(self,*_):
   self.bank_popover=Gtk.Popover.new(self.bank_display)
-  label=Gtk.Label(label='Banco confermato dall’ultimo A–D. Effetto: posizione 1–4 nel banco → numero assoluto.\n\nIl prefisso lampeggiante sulla TS Mega è in attesa di conferma. ToneLib assegna i controlli MIDI ai primi 8 effetti; i successivi sono indicati come non assegnati.')
+  label=Gtk.Label(label=('Ultimo effetto: '+self.current_effect_name+'\n\n' if self.current_effect_name else '')+'Banco confermato dall’ultimo A–D. Effetto: posizione 1–4 nel banco → numero assoluto.\n\nIl nome viene letto dal riepilogo nativo di ToneLib, quando la sua finestra è attiva nel display privato.\n\nIl prefisso lampeggiante sulla TS Mega è in attesa di conferma. ToneLib assegna i controlli MIDI ai primi 8 effetti; i successivi sono indicati come non assegnati.')
   label.set_line_wrap(True);label.set_max_width_chars(46)
   for side in ('top','bottom','start','end'):getattr(label,'set_margin_'+side)(12)
   self.bank_popover.add(label);self.bank_popover.show_all()
@@ -198,6 +207,7 @@ class Container:
     self.lock.set_margin_top(sizes(width,height)[1][1]);self.last=(width,height)
    rows=call(['wmctrl','-lpG'],env=self.env).stdout.splitlines()
    pids=call(['pgrep','-x','ToneLib-GFX']).stdout.split()
+   self.tone_window=None
    for row in rows:
     fields=row.split(None,8)
     if len(fields)<9:continue
@@ -213,7 +223,8 @@ class Container:
       # This explicit hint also protects against a changed upstream class name.
       if new_window:call(['xprop','-id',fields[0],'-f','_MOTIF_WM_HINTS','32c','-set','_MOTIF_WM_HINTS','2, 0, 0, 0, 0'],env=self.env)
      geom=sizes(width,height,self.looper_min[1])[0]
-    elif fields[2] in pids and title in ('ToneLib GFX','N/A') and normal_tonelib_window(fields[0],self.env):geom=sizes(width,height,self.looper_min[1])[1]
+    elif fields[2] in pids and title in ('ToneLib GFX','N/A') and normal_tonelib_window(fields[0],self.env):
+     geom=sizes(width,height,self.looper_min[1])[1];self.tone_window=int(fields[0],16)
     if geom is None:continue
     actual=tuple(map(int,(fields[3],fields[4],fields[5],fields[6])))
     if actual!=geom:
@@ -227,6 +238,7 @@ class Container:
   if self.check_window is not None:self.check_window.destroy()
   self.remember_geometry()
   self.bank_monitor.close()
+  self.effect_names.close()
   try:save_geometry(WINDOW_SETTINGS,self.geometry)
   except OSError as exc:print('Salvataggio finestra:',exc,file=self.log,flush=True)
   self.closed=True;STATE.unlink(missing_ok=True)

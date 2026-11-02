@@ -6,30 +6,32 @@ The current audio and MIDI profile was tested with a **MeloAudio Tone Shifter Me
 
 ## Downloads
 
-Version 1.0.8 adds a compact **bank/effect indicator**, for example **Banco: 5–8 · Effetto: 1 → 5**, and starts drum backing tracks automatically after ToneLib finishes checking the audio file. The indicator follows confirmed A–D messages; the pedal’s flashing bank selection updates here only after confirmation. All 128 positions can be displayed, while ToneLib’s native assignment supports the first eight effects. Higher positions are marked **non assegnato** and no longer wrap onto earlier effects. This version also retains saved window size/position, the **Check** pedal utility and the USB audio fix introduced in 1.0.1. The original 1.0.0 audio bundle has been withdrawn.
+Version 1.0.9 fixes startup on **Wayland desktops** by selecting XWayland for the embedded application window, while retaining support for **X11 sessions**. The bank/effect indicator now also shows the effect name from ToneLib's current chain when available, for example **Banco: 5–8 · Effetto: 1 → 5 · Spring Rvb**. It retains automatic drum playback, saved window size/position, the **Check** pedal utility and the USB audio fix. All 128 positions are displayed; ToneLib supports native assignment for the first eight effects, and higher positions remain marked **non assegnato**. The original 1.0.0 audio bundle has been withdrawn.
 
 All packages below contain the **same self-contained runtime**, including SooperLooper, JACK, the performance GUI and their libraries. They do not replace the system's SooperLooper installation.
 
 | Format | Target | Download |
 |---|---|---|
-| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/TSMA-Kit-1.0.8-x86_64.AppImage) |
-| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/tsma-kit_1.0.8_amd64.deb) |
-| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/tsma-kit-1.0.8-1.x86_64.rpm) |
-| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/SHA256SUMS) |
-| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/TSMA-Kit-1.0.8-runtime-sources.tar.gz) |
+| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.9/TSMA-Kit-1.0.9-x86_64.AppImage) |
+| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.9/tsma-kit_1.0.9_amd64.deb) |
+| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.9/tsma-kit-1.0.9-1.x86_64.rpm) |
+| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.9/SHA256SUMS) |
+| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.9/TSMA-Kit-1.0.9-runtime-sources.tar.gz) |
 
 A 64-bit desktop with **glibc 2.35 or newer**, systemd user services, D-Bus and X11/XWayland is required. This covers Ubuntu 22.04+, Mint 21+, Debian 12+ and recent Fedora releases. Runtime checks have passed on Ubuntu 22.04/24.04, Debian 12 and Fedora 44; audio hardware and live latency still need validation on each PC. ARM and older glibc releases are not supported.
 
+On Wayland desktops, the kit window automatically uses XWayland: its embedded Xephyr display requires X11 window IDs. XWayland must be enabled in the desktop session.
+
 ```bash
 # Ubuntu / Mint / Debian
-sudo apt install ./tsma-kit_1.0.8_amd64.deb
+sudo apt install ./tsma-kit_1.0.9_amd64.deb
 
 # Fedora
-sudo dnf install ./tsma-kit-1.0.8-1.x86_64.rpm
+sudo dnf install ./tsma-kit-1.0.9-1.x86_64.rpm
 
 # Portable bundle
-chmod +x TSMA-Kit-1.0.8-x86_64.AppImage
-./TSMA-Kit-1.0.8-x86_64.AppImage
+chmod +x TSMA-Kit-1.0.9-x86_64.AppImage
+./TSMA-Kit-1.0.9-x86_64.AppImage
 ```
 
 The native packages add an application-menu entry and a desktop shortcut. For another desktop user, the shortcut is created at login or with `tsma-kit --install-desktop`. The AppImage creates its shortcut on first use. If FUSE is unavailable, run the AppImage with `--appimage-extract-and-run`; native packages use an extraction cache and do not require FUSE.
@@ -81,6 +83,8 @@ ToneLib handles the sound; SooperLooper records, plays and overdubs loops. The k
 To record a replacement loop: **D → A → play your guitar → A**. Page selection on the TS Mega is reported by the next A–D message. The current mapping controls up to eight effects in chain order.
 
 Beside **Drums** and **Check**, the header shows the last confirmed effect group and the relative/absolute effect number, for example **Banco: 5–8 · Effetto: 1 → 5**. It covers all 128 Program Change positions in groups of four, including 9–12, 13–16 and so on. It shows **—** before the first message or after a disconnection. In the pedal's waiting bank mode, 3/4 change the flashing bank prefix locally; A–D confirms it and sends MIDI, updating the indicator. The indicator represents the confirmed effect group and last pressed effect, not the pending flashing prefix or an effect's on/off state.
+
+Starting with 1.0.9, the indicator also shows the effect name from ToneLib's current chain, for example **Effetto: 1 → 5 · Spring Rvb**. A background reader requests ToneLib's native Copy preset summary on the kit's private display while its main window has focus and no keys are held. It restores the private text clipboard; the desktop clipboard is separate. Names refresh after MIDI messages and periodically to reflect preset edits. When a name cannot be read, only the numeric position is shown. Long names are shortened visually and remain available in the tooltip and details.
 
 ToneLib's assignment dialog exposes **Control 1–8**, which the kit maps to the first eight effects. Higher positions are displayed as **non assegnato** and ignored by the adapter: they never wrap back onto effects 1–8 or send looper actions. Extending the display does not add native ToneLib controls beyond those eight. The Check utility learns the full Program Change value for the first bank's A button, without reducing it modulo eight.
 

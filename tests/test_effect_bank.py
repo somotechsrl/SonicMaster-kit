@@ -34,6 +34,15 @@ class BankMonitor(unittest.TestCase):
   for pc in range(128):
    self.assertEqual(self.event(0xC1,pc),pc//4)
    self.assertEqual(self.monitor.effect,pc)
+ def test_effect_repress_and_preset_navigation_invalidate_names(self):
+  self.monitor.poll();self.event(0xC1,0)
+  generation=self.monitor.generation
+  self.event(0xC1,0);self.assertGreater(self.monitor.generation,generation)
+  for cc in (22,25):
+   generation=self.monitor.generation
+   self.event(0xB1,cc,127)
+   self.assertGreater(self.monitor.generation,generation)
+   self.assertEqual(self.monitor.effect,0)
  def test_other_pedals_and_configuration_fragments_do_not_change_bank(self):
   self.monitor.poll();self.assertEqual(self.event(0xC1,7),1)
   for message in ((0xC1,0),(0xF0,0x7E,0xF7),(0x14,0x01),(0xC1,255)):

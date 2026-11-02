@@ -9,6 +9,7 @@ import gui
 
 
 class Monitor:
+ generation=0
  effect=None
  connected=True
  closed=False
@@ -18,6 +19,7 @@ class Monitor:
 
 
 def main():
+ assert isinstance(gui.Gdk.Display.get_default(),gui.GdkX11.X11Display)
  errors=[]
  with tempfile.TemporaryDirectory() as folder, patch.object(gui,'EffectBankMonitor',Monitor), patch.object(gui.Container,'start',lambda self:False), patch.object(gui,'monitor_area',lambda:(0,0,1600,1000)):
   gui.STATE=Path(folder)/'runtime.json';gui.WINDOW_SETTINGS=Path(folder)/'window.json'
@@ -31,6 +33,11 @@ def main():
      window.bank_monitor.effect=effect;window.update_bank();assert window.bank_display.get_label()==text
     window.bank_monitor.connected=False;window.update_bank()
     assert 'non collegata' in window.bank_display.get_tooltip_text()
+    window.bank_monitor.effect=4
+    with patch.object(window.effect_names,'update',return_value='Spring Rvb'):
+     window.update_bank()
+    assert window.bank_display.get_label()=='Banco: 5–8 · Effetto: 1 → 5 · Spring Rvb'
+    assert window.bank_display.get_allocated_height()==window.drums.get_allocated_height()
     with patch.object(gui,'call',return_value=SimpleNamespace(stdout='_NET_WM_WINDOW_TYPE(ATOM) = _KDE_NET_WM_WINDOW_TYPE_OVERRIDE')):
      assert not gui.normal_tonelib_window('0x123',{})
     with patch.object(gui,'call',return_value=SimpleNamespace(stdout='_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL')):

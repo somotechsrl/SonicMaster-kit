@@ -16,6 +16,7 @@ jobs:
           python3 -m unittest discover -s config/Jack/Drivers.d/tests -v
           xvfb-run -a python3 tests/gui_pedals_smoke.py
           xvfb-run -a python3 tests/gui_bank_smoke.py
+          GDK_BACKEND=wayland xvfb-run -a python3 tests/gui_bank_smoke.py
       - name: Build and check MIDI mappings
         run: |
           cc -Wall -Wextra -Werror -O2 config/Jack/Drivers.d/tsmega-midi.c -Wl,-l:libasound.so.2 -o /tmp/tsma-midi-check
