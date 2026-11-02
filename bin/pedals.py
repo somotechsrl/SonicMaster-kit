@@ -39,7 +39,7 @@ def load_profile(path):
 
 def validate_profile(values):
     for key in DEFAULT:
-        if type(values[key]) is not int or not 0 <= values[key] <= (7 if key == 'effect_offset' else 127):
+        if type(values[key]) is not int or not 0 <= values[key] <= 127:
             raise ValueError('Invalid Tone Shifter mapping: ' + key)
     if values['previous_cc'] == values['next_cc']: raise ValueError('Previous and next must use different CC numbers.')
 
@@ -68,7 +68,7 @@ def describe(name, raw, profile=None):
     if status == 0xC0 and len(raw) >= 2:
         pc = raw[1]
         if name == 'TSMEGA':
-            effect = (pc - profile['effect_offset']) % 8
+            effect = (pc - profile['effect_offset']) % 128
             return f'Ch {channel} · PC {pc} · page {effect // 4 + 1}, effect {effect + 1}', ('tsmega', effect)
         return f'Ch {channel} · PC {pc} · unmapped', None
     if raw[0] == 0xF0: return 'Configuration SysEx response', None

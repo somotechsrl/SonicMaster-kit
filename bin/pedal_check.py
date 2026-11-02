@@ -75,7 +75,7 @@ class PedalCheck(Gtk.Window):
         self.spins = {}
         for i, (key, title, maximum) in enumerate([('previous_cc', '1 · Previous preset CC', 127),
                                                  ('next_cc', '2 · Next preset CC', 127),
-                                                 ('effect_offset', 'Page 1 · A PC offset (modulo 8)', 7)]):
+                                                 ('effect_offset', 'First bank · A Program Change', 127)]):
             grid.attach(Gtk.Label(label=title, xalign=0), 0, i, 1, 1)
             spin = Gtk.SpinButton.new_with_range(0, maximum, 1); spin.set_value(self.profile[key]); self.spins[key] = spin
             grid.attach(spin, 1, i, 1, 1)
@@ -244,7 +244,7 @@ class PedalCheck(Gtk.Window):
                 if len(self.observed) > 200: self.observed = self.observed[-100:]
                 if self.learning and name == 'TSMEGA':
                     if self.learning == 'effect_offset' and raw[0] & 240 == 192:
-                        self.spins[self.learning].set_value(raw[1] % 8); self.learning = None
+                        self.spins[self.learning].set_value(raw[1]); self.learning = None
                     elif self.learning != 'effect_offset' and raw[0] & 240 == 176:
                         self.spins[self.learning].set_value(raw[1]); self.learning = None
                     if self.learning is None: self.instruction.set_text('Learned. Save Tone Shifter mappings to apply.')

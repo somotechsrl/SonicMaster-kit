@@ -1,6 +1,7 @@
 /* TS MEGA and Chocolate MIDI adapter. Never writes hardware settings.
- * TS: CC22/25 (both latch values) -> preset CC20/21; PC modulo eight ->
- * effect CC24..31. Chocolate: positive CC80..83 -> SooperLooper
+ * TS: CC22/25 (both latch values) -> preset CC20/21; first eight PCs ->
+ * effect CC24..31. Higher PCs never wrap onto earlier effects.
+ * Chocolate: positive CC80..83 -> SooperLooper
  * record/play, overdub, pause, clear. ToneLib events use channel 16 pulses.
  */
 #include <sound/asequencer.h>
@@ -58,7 +59,7 @@ static void load_profile(void){
   else if(!strcmp(key,"effect_offset"))offset=value;
  }
  fclose(file);
- if(prev>=0&&prev<128&&next>=0&&next<128&&prev!=next&&offset>=0&&offset<8){previous_cc=prev;next_cc=next;effect_offset=offset;}
+ if(prev>=0&&prev<128&&next>=0&&next<128&&prev!=next&&offset>=0&&offset<128){previous_cc=prev;next_cc=next;effect_offset=offset;}
 }
 static int checking(void){
  char path[PATH_MAX];const char *runtime=getenv("XDG_RUNTIME_DIR");char fallback[64];
@@ -70,7 +71,12 @@ static int checking(void){
  return read==2&&expires>=now&&expires<=now+5&&pid>1&&kill((pid_t)pid,0)==0;
 }
 static int mapped(const struct snd_seq_event *e){
- if(e->type==SNDRV_SEQ_EVENT_PGMCHANGE)return 24+((e->data.control.value-effect_offset+128)%8);
+ if(e->type==SNDRV_SEQ_EVENT_PGMCHANGE){
+  int effect=(e->data.control.value-effect_offset+128)%128;
+  /* ToneLib exposes only Control 1..8. Do not alias later banks, or let
+   * generated CC80..83 accidentally enter the Chocolate looper path. */
+  return effect<8?24+effect:-1;
+ }
  if(e->type==SNDRV_SEQ_EVENT_CONTROLLER){
   if(e->data.control.param==(unsigned)previous_cc)return 20;
   if(e->data.control.param==(unsigned)next_cc)return 21;
@@ -129,7 +135,7 @@ static void looper_action(int cc){
 int main(int argc,char **argv){
  if(argc==2&&!strcmp(argv[1],"--self-test")){
   struct snd_seq_event e;memset(&e,0,sizeof(e));e.type=SNDRV_SEQ_EVENT_PGMCHANGE;
-  for(int ch=0;ch<16;ch++){e.data.control.channel=ch;for(int n=0;n<128;n++){e.data.control.value=n;if(mapped(&e)!=24+n%8)return 1;}}
+  for(int ch=0;ch<16;ch++){e.data.control.channel=ch;for(int n=0;n<128;n++){e.data.control.value=n;if(mapped(&e)!=(n<8?24+n:-1))return 1;}}
   e.type=SNDRV_SEQ_EVENT_CONTROLLER;
   for(int ch=0;ch<16;ch++)for(int value=0;value<128;value++){
    e.data.control.channel=ch;e.data.control.value=value;
@@ -146,7 +152,9 @@ int main(int argc,char **argv){
   e.type=SNDRV_SEQ_EVENT_CONTROLLER;e.data.control.param=5;if(mapped(&e)!=20)return 1;
   e.data.control.param=6;if(mapped(&e)!=21)return 1;
   e.type=SNDRV_SEQ_EVENT_PGMCHANGE;
-  for(int n=0;n<128;n++){e.data.control.value=n;if(mapped(&e)!=24+(n-4+128)%8)return 1;}
+  for(int n=0;n<128;n++){e.data.control.value=n;int effect=(n-4+128)%128;if(mapped(&e)!=(effect<8?24+effect:-1))return 1;}
+  effect_offset=124;
+  for(int n=0;n<128;n++){e.data.control.value=n;int effect=(n-124+128)%128;if(mapped(&e)!=(effect<8?24+effect:-1))return 1;}
   puts("TSMEGA and Chocolate mapping checks passed");return 0;
  }
  int trace=getenv("TSMEGA_MIDI_TRACE")!=NULL;

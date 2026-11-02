@@ -81,6 +81,16 @@ class PedalProtocol(unittest.TestCase):
         self.assertIsNone(describe('other', bytes([176, 83, 127]))[1])
         self.assertEqual(describe('SINCO', bytes([176, 83, 127]))[1], ('chocolate', 3))
 
+    def test_effect_numbers_cover_all_banks_and_full_pc_offset(self):
+        for pc in range(128):
+            self.assertEqual(describe('TSMEGA',bytes([192,pc]))[1],('tsmega',pc))
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'pedals.conf'
+            profile=dict(DEFAULT,effect_offset=124)
+            save_profile(path,profile)
+            self.assertEqual(load_profile(path),profile)
+            self.assertEqual(describe('TSMEGA',bytes([192,0]),profile)[1],('tsmega',4))
+
     def test_detection_uses_names_not_fixed_client_numbers(self):
         text = 'Client 203 : "SINCO" [Kernel Legacy]\n  Port 2 : "SINCO MIDI 1" (RWeX) [In/Out]\nClient 204 : "TSMEGA ToneLib" [User Legacy]\n  Port 0 : "Controller input" (RWe-) [In/Out]\n'
         self.assertEqual(devices(text), [{'client': 203, 'port': 2, 'name': 'SINCO', 'port_name': 'SINCO MIDI 1'}])

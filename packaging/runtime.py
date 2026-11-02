@@ -107,7 +107,7 @@ def self_test():
  import ctypes,gi,dbus
  gi.require_version('Gtk','3.0');gi.require_version('GdkX11','3.0')
  from gi.repository import Gtk,GdkX11
- for name in ('libjack.so.0','libasound.so.2','libgtk-3.so.0'):ctypes.CDLL(name)
+ for name in ('libjack.so.0','libasound.so.2','libgtk-3.so.0','libXtst.so.6'):ctypes.CDLL(name)
  for name in ('sooperlooper','slgui','jackdbus','jack_control','jack_lsp','jack_samplerate','zita-a2j','zita-j2a','Xephyr','openbox','xauth','xprop','xwininfo','xrandr','wmctrl','ffmpeg'):
   if not shutil.which(name):raise RuntimeError('Missing bundled tool: '+name)
  run(str(PAYLOAD/'config/Jack/Drivers.d/tsmega-midi'),'--self-test');ctypes.CDLL(str(PAYLOAD/'vendor/slgui-lock.so'))

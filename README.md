@@ -6,30 +6,30 @@ The current audio and MIDI profile was tested with a **MeloAudio Tone Shifter Me
 
 ## Downloads
 
-Version 1.0.6 saves the window’s actual size and position on closing and restores those dimensions as a normal window on the next launch, including when closed while maximized. It includes **Check**, a pedal diagnostic/programming utility with guided tests, Tone Shifter software MIDI learn and verified Chocolate USB programming. The Check window opens over the kit, and its MIDI monitor filters fragmented configuration replies. It retains the compact SooperLooper panel and three-pixel outer border. It retains the 1.0.1 USB audio fix: Zita bridges built against ALSA PCMI 0.6.1. The original 1.0.0 audio bundle has been withdrawn.
+Version 1.0.8 adds a compact **bank/effect indicator**, for example **Banco: 5–8 · Effetto: 1 → 5**, and starts drum backing tracks automatically after ToneLib finishes checking the audio file. The indicator follows confirmed A–D messages; the pedal’s flashing bank selection updates here only after confirmation. All 128 positions can be displayed, while ToneLib’s native assignment supports the first eight effects. Higher positions are marked **non assegnato** and no longer wrap onto earlier effects. This version also retains saved window size/position, the **Check** pedal utility and the USB audio fix introduced in 1.0.1. The original 1.0.0 audio bundle has been withdrawn.
 
 All packages below contain the **same self-contained runtime**, including SooperLooper, JACK, the performance GUI and their libraries. They do not replace the system's SooperLooper installation.
 
 | Format | Target | Download |
 |---|---|---|
-| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.6/TSMA-Kit-1.0.6-x86_64.AppImage) |
-| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.6/tsma-kit_1.0.6_amd64.deb) |
-| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.6/tsma-kit-1.0.6-1.x86_64.rpm) |
-| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.6/SHA256SUMS) |
-| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.6/TSMA-Kit-1.0.6-runtime-sources.tar.gz) |
+| AppImage | Portable x86_64 Linux bundle | [TSMA Kit AppImage](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/TSMA-Kit-1.0.8-x86_64.AppImage) |
+| DEB | Ubuntu, Linux Mint and Debian, amd64 | [TSMA Kit .deb](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/tsma-kit_1.0.8_amd64.deb) |
+| RPM | Fedora, x86_64 | [TSMA Kit .rpm](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/tsma-kit-1.0.8-1.x86_64.rpm) |
+| Checksums | SHA-256 verification | [SHA256SUMS](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/SHA256SUMS) |
+| Runtime source | Corresponding sources for the bundled free components | [Runtime sources](https://github.com/somotechsrl/TSMA-Kit/releases/download/v1.0.8/TSMA-Kit-1.0.8-runtime-sources.tar.gz) |
 
 A 64-bit desktop with **glibc 2.35 or newer**, systemd user services, D-Bus and X11/XWayland is required. This covers Ubuntu 22.04+, Mint 21+, Debian 12+ and recent Fedora releases. Runtime checks have passed on Ubuntu 22.04/24.04, Debian 12 and Fedora 44; audio hardware and live latency still need validation on each PC. ARM and older glibc releases are not supported.
 
 ```bash
 # Ubuntu / Mint / Debian
-sudo apt install ./tsma-kit_1.0.6_amd64.deb
+sudo apt install ./tsma-kit_1.0.8_amd64.deb
 
 # Fedora
-sudo dnf install ./tsma-kit-1.0.6-1.x86_64.rpm
+sudo dnf install ./tsma-kit-1.0.8-1.x86_64.rpm
 
 # Portable bundle
-chmod +x TSMA-Kit-1.0.6-x86_64.AppImage
-./TSMA-Kit-1.0.6-x86_64.AppImage
+chmod +x TSMA-Kit-1.0.8-x86_64.AppImage
+./TSMA-Kit-1.0.8-x86_64.AppImage
 ```
 
 The native packages add an application-menu entry and a desktop shortcut. For another desktop user, the shortcut is created at login or with `tsma-kit --install-desktop`. The AppImage creates its shortcut on first use. If FUSE is unavailable, run the AppImage with `--appimage-extract-and-run`; native packages use an extraction cache and do not require FUSE.
@@ -40,7 +40,7 @@ User data lives in **`~/.local/share/tsma-kit/kit`** (or `$XDG_DATA_HOME/tsma-ki
 
 ### Local drum backing tracks
 
-Use the **Drums** button in the kit header to browse by style and BPM and load a file into ToneLib's Backing track player. Files are local to the user, not added to ToneLib's fixed built-in Rhythm Player patterns.
+Use the **Drums** button in the kit header to browse by style and BPM and load a file into ToneLib's Backing track player. After ToneLib finishes its audio-file analysis, playback starts automatically. Loading runs in the background so the host window stays responsive. Files are local to the user, not added to ToneLib's fixed built-in Rhythm Player patterns.
 
 The importer extracts audio from local videos, keeps the originals and writes concise names such as `Jazz/Swing/120 BPM.flac` and `Bossa Nova/Brushes/070 BPM.flac`. FLAC 16-bit stereo at 48 kHz is the default; `--format wav` is available in the source script.
 
@@ -71,7 +71,7 @@ ToneLib handles the sound; SooperLooper records, plays and overdubs loops. The k
 | Controller | Button | Action |
 |---|---|---|
 | Tone Shifter Mega | 1 / 2 | Previous / next ToneLib preset |
-| Tone Shifter Mega | 3 / 4 | Select the hardware page for effects 1–4 / 5–8 |
+| Tone Shifter Mega | 3 / 4 (arrows) | Previous / next hardware bank; A–D confirms the pending selection |
 | Tone Shifter Mega | A–D | Toggle the corresponding effect on the selected page |
 | M-Wave Chocolate | A | Record an empty loop; press again to finish and play. With an existing loop, play/retrigger it. |
 | M-Wave Chocolate | B | Overdub on/off |
@@ -79,6 +79,10 @@ ToneLib handles the sound; SooperLooper records, plays and overdubs loops. The k
 | M-Wave Chocolate | D | Clear the loop |
 
 To record a replacement loop: **D → A → play your guitar → A**. Page selection on the TS Mega is reported by the next A–D message. The current mapping controls up to eight effects in chain order.
+
+Beside **Drums** and **Check**, the header shows the last confirmed effect group and the relative/absolute effect number, for example **Banco: 5–8 · Effetto: 1 → 5**. It covers all 128 Program Change positions in groups of four, including 9–12, 13–16 and so on. It shows **—** before the first message or after a disconnection. In the pedal's waiting bank mode, 3/4 change the flashing bank prefix locally; A–D confirms it and sends MIDI, updating the indicator. The indicator represents the confirmed effect group and last pressed effect, not the pending flashing prefix or an effect's on/off state.
+
+ToneLib's assignment dialog exposes **Control 1–8**, which the kit maps to the first eight effects. Higher positions are displayed as **non assegnato** and ignored by the adapter: they never wrap back onto effects 1–8 or send looper actions. Extending the display does not add native ToneLib controls beyond those eight. The Check utility learns the full Program Change value for the first bank's A button, without reducing it modulo eight.
 
 The Chocolate must use its saved Custom CC profile: MIDI channel 1, CC 80/81/82/83 for A/B/C/D, momentary 127/0. The performance adapter handles presses and ignores releases. Hardware programming is an explicit operation in the Check utility described below.
 

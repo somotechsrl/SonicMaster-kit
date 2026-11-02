@@ -51,5 +51,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version=$(cat VERSION)
-          gh release view v$version >/dev/null 2>&1 || gh release create v$version --verify-tag --title "TSMA Kit $version" --notes "Self-contained x86_64 AppImage, DEB and RPM with bundled SooperLooper and JACK. Requires glibc 2.35+, systemd user services and X11/XWayland. ToneLib is downloaded separately from the official vendor; no author license or personal backing tracks are included. See README for installation and local FLAC drum-library import."
+          gh release view v$version >/dev/null 2>&1 || gh release create v$version --verify-tag --title "TSMA Kit $version" --notes-file packaging/release-notes.md
           gh release upload v$version dist/TSMA-Kit-$version-x86_64.AppImage dist/tsma-kit_${version}_amd64.deb dist/tsma-kit-$version-1.x86_64.rpm dist/SHA256SUMS dist/TSMA-Kit-$version-runtime-sources.tar.gz --clobber

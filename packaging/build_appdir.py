@@ -41,6 +41,11 @@ for name in programs:
  copy(path,APP/'usr/bin'/name)
 for path in ['/usr/lib/python3.10','/usr/lib/python3/dist-packages','/usr/lib/x86_64-linux-gnu/girepository-1.0','/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0','/usr/lib/x86_64-linux-gnu/gtk-3.0','/usr/lib/x86_64-linux-gnu/jack','/usr/share/glib-2.0/schemas','/usr/share/themes/Clearlooks','/usr/share/xml/openbox','/usr/share/X11/xkb','/usr/share/icons/hicolor','/usr/share/icons/Adwaita','/usr/share/mime']:
  copy(path)
+# The backing-track helper loads XTest dynamically to press the recognized Play
+# control. It is not visible to ldd on the bundled executables.
+xtst=Path('/usr/lib/x86_64-linux-gnu/libXtst.so.6')
+if not xtst.exists():raise RuntimeError('Missing build library libXtst.so.6')
+copy(xtst)
 # Do not inject build tools, host GPU drivers or glibc into unrelated host commands.
 blacklist=re.compile(r'^(ld-linux|libc\.so|libpthread\.so|libdl\.so|librt\.so|libm\.so|libresolv\.so|libutil\.so|libnss_|libstdc\+\+\.so|libgcc_s\.so|libGL\.so|libGLX|libGLdispatch|libEGL\.so|libGLES)')
 seen=set()

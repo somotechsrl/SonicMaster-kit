@@ -8,13 +8,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libgtk-3-dev python3-gi gir1.2-gtk-3.0 xvfb
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libgtk-3-dev python3-gi gir1.2-gtk-3.0 xvfb x11-utils wmctrl
       - name: Python syntax and offline regressions
         run: |
           python3 -m py_compile bin/*.py
           python3 -m unittest discover -s tests -v
           python3 -m unittest discover -s config/Jack/Drivers.d/tests -v
           xvfb-run -a python3 tests/gui_pedals_smoke.py
+          xvfb-run -a python3 tests/gui_bank_smoke.py
       - name: Build and check MIDI mappings
         run: |
           cc -Wall -Wextra -Werror -O2 config/Jack/Drivers.d/tsmega-midi.c -Wl,-l:libasound.so.2 -o /tmp/tsma-midi-check
