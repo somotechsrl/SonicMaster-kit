@@ -5,10 +5,11 @@ from pathlib import Path
 import gi
 gi.require_version('Gtk','3.0');gi.require_version('GdkX11','3.0')
 from gi.repository import Gtk,Gdk,GdkX11,GLib
-from window_layout import sizes,minimum_size
+from window_layout import sizes,minimum_size,load_geometry,save_geometry,fit_geometry
 ROOT=Path(__file__).resolve().parents[1]
 RUNTIME=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'
 STATE=RUNTIME/'tsma-gui.json'
+WINDOW_SETTINGS=Path(os.environ.get('XDG_CONFIG_HOME') or Path.home()/'.config')/'tsma-kit/window.json'
 
 def call(args,env=None,check=False):
  return subprocess.run(args,env=env,check=check,capture_output=True,text=True,timeout=5)
@@ -35,6 +36,14 @@ class Container:
   self.looper_window=None;self.looper_min=(848,187)
   self.log=(ROOT/'log/gui.log').open('a')
   x,y,w,h=monitor_area();width=min(1506,w-80);height=min(920,h-130)
+  self.geometry={'x':x+(w-width)//2,'y':y+12,'width':width,'height':height}
+  saved=load_geometry(WINDOW_SETTINGS)
+  if saved is not None:
+   display=Gdk.Display.get_default();areas=[]
+   for i in range(display.get_n_monitors()):
+    rect=display.get_monitor(i).get_workarea();areas.append((rect.x,rect.y,rect.width,rect.height))
+   self.geometry=fit_geometry(saved,areas,(x,y,w,h))
+  width=self.geometry['width'];height=self.geometry['height']
   self.window=Gtk.Window(title='TSMA Kit')
   self.window.get_style_context().add_class('tsma-shell')
   root_info=call(['xwininfo','-root']).stdout
@@ -52,7 +61,7 @@ class Container:
   style=Gtk.CssProvider()
   style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:3px solid #52606d; border-radius:8px;}')
   Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),style,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-  self.window.move(x+(w-width)//2,y+12)
+  self.window.move(self.geometry['x'],self.geometry['y'])
   self.area=Gtk.DrawingArea();self.area.set_can_focus(True)
   self.area.set_visual(visual)
   overlay=Gtk.Overlay();overlay.add(self.area);self.window.add(overlay)
@@ -66,10 +75,17 @@ class Container:
   self.lock.connect('scroll-event',lambda *_:True)
   overlay.add_overlay(self.lock)
   self.window.connect('delete-event',self.close)
+  self.window.connect('configure-event',self.remember_geometry)
   self.window.connect('destroy',lambda *_:Gtk.main_quit())
   self.window.show_all();self.area.grab_focus()
   GLib.idle_add(self.start)
   GLib.timeout_add(250,self.tick)
+ def remember_geometry(self,*_):
+  native=self.window.get_window()
+  if native is None or native.get_state() & Gdk.WindowState.ICONIFIED:return False
+  x,y=self.window.get_position();width,height=self.window.get_size()
+  self.geometry.update(x=x,y=y,width=width,height=height)
+  return False
  def check_pedals(self,*_):
   if self.check_window is not None:
    self.check_window.present();return
@@ -171,6 +187,9 @@ class Container:
   if self.check_window is not None and self.check_window.busy:
    self.check_window.present();self.check_window.log('Finish the pedal configuration transaction before closing the kit.');return True
   if self.check_window is not None:self.check_window.destroy()
+  self.remember_geometry()
+  try:save_geometry(WINDOW_SETTINGS,self.geometry)
+  except OSError as exc:print('Salvataggio finestra:',exc,file=self.log,flush=True)
   self.closed=True;STATE.unlink(missing_ok=True)
   if self.ready:
    # Close gracefully while X is still alive so application settings can save.
