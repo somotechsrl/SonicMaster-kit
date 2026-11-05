@@ -21,7 +21,8 @@ class Monitor:
 def main():
  assert isinstance(gui.Gdk.Display.get_default(),gui.GdkX11.X11Display)
  errors=[]
- with tempfile.TemporaryDirectory() as folder, patch.object(gui,'EffectBankMonitor',Monitor), patch.object(gui.Container,'start',lambda self:False), patch.object(gui,'monitor_area',lambda:(0,0,1600,1000)):
+ with tempfile.TemporaryDirectory() as folder, patch.object(gui,'ROOT',Path(folder)), patch.object(gui,'EffectBankMonitor',Monitor), patch.object(gui.Container,'start',lambda self:False), patch.object(gui,'monitor_area',lambda:(0,0,1600,1000)):
+  isolated=Path(folder);(isolated/'log').mkdir();(isolated/'icona.svg').symlink_to(ROOT/'icona.svg')
   gui.STATE=Path(folder)/'runtime.json';gui.WINDOW_SETTINGS=Path(folder)/'window.json'
   window=gui.Container()
   def exercise():
@@ -38,6 +39,14 @@ def main():
      window.update_bank()
     assert window.bank_display.get_label()=='Banco: 5–8 · Effetto: 1 → 5 · Spring Rvb'
     assert window.bank_display.get_allocated_height()==window.drums.get_allocated_height()
+    for active,text,css in ((True,'● Acceso','effect-on'),(False,'○ Spento','effect-off'),(None,'','')):
+     window.effect_names.active=active
+     with patch.object(window.effect_names,'update',return_value='Spring Rvb'):window.update_bank()
+     assert window.bank_display.get_label()==(text+' · ' if text else '')+'Banco: 5–8 · Effetto: 1 → 5 · Spring Rvb'
+     for candidate in ('effect-on','effect-off'):
+      assert window.bank_display.get_style_context().has_class(candidate)==(candidate==css)
+    window.bank_monitor.effect=None;window.update_bank()
+    assert not window.bank_display.get_style_context().has_class('effect-off')
     with patch.object(gui,'call',return_value=SimpleNamespace(stdout='_NET_WM_WINDOW_TYPE(ATOM) = _KDE_NET_WM_WINDOW_TYPE_OVERRIDE')):
      assert not gui.normal_tonelib_window('0x123',{})
     with patch.object(gui,'call',return_value=SimpleNamespace(stdout='_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL')):

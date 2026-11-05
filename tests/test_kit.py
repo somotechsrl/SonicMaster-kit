@@ -60,6 +60,33 @@ class Routing(unittest.TestCase):
   add,remove=routing.plan(g,kit=True,tonelib=False)
   self.assertEqual(len(add),2);self.assertEqual(len(remove),2)
   self.assertTrue(all(dest.startswith('ardour:') for _,dest in add))
+ def test_obs_feed_keeps_hardware_monitoring_and_other_pipewire_sources(self):
+  g=self.graph('TSMA_Looper:common_out_1','TSMA_Looper:common_out_2',
+   'TSMEGA_out:playback_1','TSMEGA_out:playback_2',
+   'PipeWire:capture_FL','PipeWire:capture_FR')
+  g['PipeWire:capture_FL']['connections']=['system:capture_1']
+  g['PipeWire:capture_FR']['connections']=['system:capture_2']
+  add,remove=routing.plan(g,kit=True,tonelib=False)
+  self.assertEqual(len(add),4);self.assertEqual(remove,[])
+  for source,dest in add:g[source]['connections'].append(dest);g[dest]['connections'].append(source)
+  self.assertEqual(routing.plan(g,kit=True,tonelib=False),([],[]))
+  # A running Ardour without the kit track must still disable the OBS feed.
+  add,remove=routing.plan(g,kit=True,tonelib=False,ardour=True)
+  self.assertEqual(add,[])
+  mirror=[('TSMA_Looper:common_out_1','PipeWire:capture_FL'),('TSMA_Looper:common_out_2','PipeWire:capture_FR')]
+  self.assertEqual(remove,mirror)
+  for source,dest in remove:g[source]['connections'].remove(dest);g[dest]['connections'].remove(source)
+  self.assertEqual(routing.plan(g,kit=True,tonelib=False)[0],mirror)
+  self.assertEqual(g['PipeWire:capture_FL']['connections'],['system:capture_1'])
+ def test_any_ardour_graph_client_suppresses_obs_feed(self):
+  for client in ('ardour','Ardour','ardour8','ardour-9','ardour-8.4.0~ds1'):
+   g=self.graph('TSMA_Looper:common_out_1','PipeWire:capture_FL',client+':Master/audio_out 1')
+   g['TSMA_Looper:common_out_1']['connections']=['PipeWire:capture_FL']
+   self.assertEqual(routing.plan(g,kit=True,tonelib=False),([],[('TSMA_Looper:common_out_1','PipeWire:capture_FL')]))
+ def test_inactive_kit_removes_only_its_obs_feed(self):
+  g=self.graph('TSMA_Looper:common_out_1','PipeWire:capture_FL')
+  g['TSMA_Looper:common_out_1']['connections']=['PipeWire:capture_FL']
+  self.assertEqual(routing.plan(g,kit=False,tonelib=False),([],[('TSMA_Looper:common_out_1','PipeWire:capture_FL')]))
 
 class PortableProfile(unittest.TestCase):
  def test_new_home_and_renumbered_midi(self):

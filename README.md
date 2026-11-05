@@ -68,6 +68,8 @@ ToneLib handles the sound; SooperLooper records, plays and overdubs loops. The k
 
 **Ardour is optional and is never launched by the kit.** If an already-running Ardour session exposes the stereo inputs of a track named `TSMA-Kit`, the kit routes its output to that track. Otherwise it monitors through the Tone Shifter outputs. The Ardour session must provide its own monitoring/output routing.
 
+When Ardour is closed, the kit also sends its final stereo mix (guitar, loops and backing tracks) to the existing PipeWire JACK bridge, if available. In OBS, add **Audio Input Capture (PulseAudio)** and select **JACK Source** (`jack_source`). The Tone Shifter listening outputs remain connected. Opening Ardour disconnects this extra feed, including when its session has no `TSMA-Kit` track; closing Ardour restores it automatically. This requires PipeWire's JACK tunnel (`PipeWire:capture_FL/FR`); the kit leaves unrelated PipeWire connections and desktop audio settings intact.
+
 ## Pedal controls
 
 | Controller | Button | Action |

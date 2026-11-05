@@ -79,7 +79,7 @@ class Container:
   self.bank_status=None;self.update_bank()
   self.check_window=None
   style=Gtk.CssProvider()
-  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} headerbar button.tsma-bank {background:#30383b;font-weight:bold;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:3px solid #52606d; border-radius:8px;}')
+  style.load_from_data(b'headerbar {background:#202225;color:#f7f7f7;} headerbar .title, headerbar button {color:#f7f7f7;} headerbar button.tsma-bank {background:#30383b;font-weight:bold;} headerbar button.tsma-bank.effect-on {background:#21633e;} headerbar button.tsma-bank.effect-off {background:#44484b;color:#d0d0d0;} .tsma-lock {background:#272727;color:#c8c8c8;} window.tsma-shell decoration {border:3px solid #52606d; border-radius:8px;}')
   Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),style,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   self.window.move(self.geometry['x'],self.geometry['y'])
   self.area=Gtk.DrawingArea();self.area.set_can_focus(True)
@@ -103,12 +103,18 @@ class Container:
  def update_bank(self):
   bank=self.bank_monitor.poll();effect=self.bank_monitor.effect
   name=self.effect_names.update(effect,self.bank_monitor.generation,self.tone_window,self.env)
-  status=(self.bank_monitor.connected,effect,name)
+  active=self.effect_names.active if name and effect is not None else None
+  state='● Acceso' if active is True else '○ Spento' if active is False else ''
+  status=(self.bank_monitor.connected,effect,name,active)
   if status==self.bank_status:return
   self.bank_status=status
-  self.bank_display.set_label((f'Banco: {bank*4+1}–{bank*4+4} · Effetto: {effect%4+1} → {effect+1}'+(' · '+name if name else '')+(' · non assegnato' if effect>=8 else '')) if bank is not None else 'Banco: — · Effetto: —')
+  style=self.bank_display.get_style_context()
+  for css,value in (('effect-on',True),('effect-off',False)):
+   if active is value:style.add_class(css)
+   else:style.remove_class(css)
+  self.bank_display.set_label(((state+' · ' if state else '')+f'Banco: {bank*4+1}–{bank*4+4} · Effetto: {effect%4+1} → {effect+1}'+(' · '+name if name else '')+(' · non assegnato' if effect>=8 else '')) if bank is not None else 'Banco: — · Effetto: —')
   self.current_effect_name=name
-  self.bank_display.set_tooltip_text(((name+'\n' if name else '')+'Ultimo effetto azionato: posizione nel banco → numero assoluto. Il banco lampeggiante sulla pedaliera si aggiorna qui dopo A–D.'+(' Oltre l’effetto 8, ToneLib non ha un controllo assegnato.' if effect>=8 else '')) if effect is not None else 'Premi A–D per rilevare il banco e l’effetto.' if self.bank_monitor.connected else 'Tone Shifter non collegata.')
+  self.bank_display.set_tooltip_text(((name+'\n' if name else '')+(state+' — stato letto da ToneLib GFX.\n' if state else 'Stato acceso/spento non disponibile.\n')+'Ultimo effetto azionato: posizione nel banco → numero assoluto. Il banco lampeggiante sulla pedaliera si aggiorna qui dopo A–D.'+(' Oltre l’effetto 8, ToneLib non ha un controllo assegnato.' if effect>=8 else '')) if effect is not None else 'Premi A–D per rilevare il banco e l’effetto.' if self.bank_monitor.connected else 'Tone Shifter non collegata.')
  def bank_details(self,*_):
   self.bank_popover=Gtk.Popover.new(self.bank_display)
   label=Gtk.Label(label=('Ultimo effetto: '+self.current_effect_name+'\n\n' if self.current_effect_name else '')+'Banco confermato dall’ultimo A–D. Effetto: posizione 1–4 nel banco → numero assoluto.\n\nIl nome viene letto dal riepilogo nativo di ToneLib, quando la sua finestra è attiva nel display privato.\n\nIl prefisso lampeggiante sulla TS Mega è in attesa di conferma. ToneLib assegna i controlli MIDI ai primi 8 effetti; i successivi sono indicati come non assegnati.')
