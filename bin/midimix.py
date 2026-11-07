@@ -154,7 +154,7 @@ class Names:
         self.udp.bind(('127.0.0.1', 0)); self.udp.setblocking(False)
         self.target = ('127.0.0.1', port)
         self.rows = {}; self.pending = None
-        self.gains = {}; self.meters = {}
+        self.gains = {}; self.meters = {}; self.mutes = {}
         self.last_reply = 0; self.next_query = 0; self.configured = False
 
     def send(self, path, *args):
@@ -165,7 +165,7 @@ class Names:
             if not self.configured or now - self.last_reply > 3:
                 # All visible routes, excluding master/monitor/VCA, in the same
                 # presentation order as Generic MIDI's /route/... Bn bindings.
-                self.send('/set_surface', 0, 15, 16514, 0, 0, 0, self.udp.getsockname()[1])
+                self.send('/set_surface', 0, 15, 16515, 0, 0, 0, self.udp.getsockname()[1])
                 self.configured = True
             self.pending = {}
             self.send('/strip/list')
@@ -187,10 +187,13 @@ class Names:
                     self.last_reply = now
             elif path == '/reply' and len(args) >= 7 and self.pending is not None:
                 self.pending[int(args[6])] = str(args[1])
+                self.mutes[int(args[6])] = bool(args[4])
             elif path == '/strip/name' and len(args) == 2:
                 index, name = int(args[0]), str(args[1])
                 if self.pending is None:
                     self.rows[index] = name
+            elif path == '/strip/mute' and len(args) == 2:
+                self.mutes[int(args[0])] = bool(args[1])
             elif path in ('/strip/gain', '/strip/meter') and len(args) == 2:
                 index, value = int(args[0]), float(args[1])
                 if math.isfinite(value):
@@ -267,6 +270,7 @@ def worker():
                     status = f'Ardour Midimix · Banco {bank.index+1} · Tracce {bank.index*8+1}–{bank.index*8+8}'
                 state = {'active': active, 'status': status,
                          'names': [names.rows.get(bank.index*8+i+1, '—') if active else '—' for i in range(8)],
+                         'mutes': [names.mutes.get(bank.index*8+i+1) if active and bank.index*8+i+1 in names.rows else None for i in range(8)],
                          'gains': [names.gains.get(bank.index*8+i+1) if active and bank.index*8+i+1 in names.rows else None for i in range(8)],
                          'meters': [names.meters.get(bank.index*8+i+1) if active and bank.index*8+i+1 in names.rows else None for i in range(8)],
                          'fader': bank.last_fader if active and now-bank.touched < 1 else None}

@@ -32,9 +32,11 @@ class MidimixPanel(Gtk.Box):
             heading.pack_start(button, False, False, 0)
         self.pack_start(heading, False, False, 0)
         row = Gtk.Box(spacing=4, homogeneous=True)
-        self.labels = []; self.boxes = []; self.volumes = []; self.vus = []
+        self.labels = []; self.boxes = []; self.volumes = []; self.vus = []; self.mutes = []
         style = Gtk.CssProvider()
         style.load_from_data(b"""
+        .tsma-mute {font-size:9px; padding:2px 3px; border-radius:3px; background:#343a40; color:#828990;}
+        .tsma-mute.active {background:#b33939; color:#fff; font-weight:bold;}
         .tsma-meter {font-size:10px; color:#fff; text-shadow:0 1px #111;}
         .tsma-meter trough {min-height:14px; background:#20272b; border:0; border-radius:2px;}
         .tsma-meter progress {min-height:14px; border:0; border-radius:2px;}
@@ -51,7 +53,11 @@ class MidimixPanel(Gtk.Box):
             label.set_margin_start(4); label.set_margin_end(4)
             content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             content.set_margin_start(3); content.set_margin_end(3); content.set_margin_bottom(4)
-            content.pack_start(label, False, False, 0)
+            title = Gtk.Box(spacing=2)
+            title.pack_start(label, True, True, 0)
+            mute = Gtk.Label(label='MUTE'); mute.get_style_context().add_class('tsma-mute')
+            title.pack_start(mute, False, False, 0); self.mutes.append(mute)
+            content.pack_start(title, False, False, 0)
             for kind, collection in (('volume', self.volumes), ('vu', self.vus)):
                 bar = Gtk.ProgressBar(show_text=True)
                 bar.set_text(('Vol ' if kind == 'volume' else 'VU ')+'—')
@@ -87,6 +93,12 @@ class MidimixPanel(Gtk.Box):
             else:
                 label.set_text(text)
             label.set_tooltip_text(f'Fader MIDImix {i+1} → {name}')
+            values = state.get('mutes', [])
+            muted = values[i] if i < len(values) and name != '—' else None
+            context = self.mutes[i].get_style_context()
+            if muted is True: context.add_class('active')
+            else: context.remove_class('active')
+            self.mutes[i].set_tooltip_text('Mute attivo' if muted is True else 'Mute disattivato' if muted is False else 'Mute non disponibile')
             for key, bar, prefix in (('gains', self.volumes[i], 'Vol'), ('meters', self.vus[i], 'VU')):
                 values = state.get(key, [])
                 db = values[i] if i < len(values) else None
