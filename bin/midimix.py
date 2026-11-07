@@ -155,21 +155,26 @@ class Names:
         self.target = ('127.0.0.1', port)
         self.rows = {}; self.pending = None
         self.gains = {}; self.meters = {}; self.mutes = {}
-        self.last_reply = 0; self.next_query = 0; self.configured = False
+        self.last_reply = 0; self.next_query = 0; self.next_config = 0; self.configured = False
 
     def send(self, path, *args):
         self.udp.sendto(encode(path, *args), self.target)
 
     def poll(self, now):
         if now >= self.next_query:
-            if not self.configured or now - self.last_reply > 3:
+            if not self.configured or (now - self.last_reply > 3 and now >= self.next_config):
                 # All visible routes, excluding master/monitor/VCA, in the same
                 # presentation order as Generic MIDI's /route/... Bn bindings.
                 self.send('/set_surface', 0, 15, 16515, 0, 0, 0, self.udp.getsockname()[1])
                 self.configured = True
-            self.pending = {}
-            self.send('/strip/list')
-            self.next_query = now + 1
+                self.next_config = now + 5
+                # Drain Ardour's initial observer burst before requesting an
+                # atomic list: that burst can overflow Linux's UDP receive cap.
+                self.next_query = now + .2
+            else:
+                self.pending = {}
+                self.send('/strip/list')
+                self.next_query = now + 1
         for _ in range(4096):
             try:
                 packet, peer = self.udp.recvfrom(65535)
@@ -251,7 +256,7 @@ def worker():
                     if live and not active_map(config):
                         status = 'Ardour Midimix · configurazione automatica al prossimo avvio di Ardour'
                     elif not live and ardour_running():
-                        status = 'Ardour Midimix · configurazione automatica al prossimo avvio di Ardour'
+                        status = ('Ardour Midimix · collegamento OSC in corso…' if active_map(config) else 'Ardour Midimix · configurazione automatica al prossimo avvio di Ardour')
                     elif not current:
                         status = 'MIDImix non collegato'
                     elif live:
