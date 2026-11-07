@@ -11,6 +11,7 @@ from gi.repository import Gtk,Gdk,GdkX11,GLib,Pango
 from window_layout import sizes,minimum_size,load_geometry,save_geometry,fit_geometry
 from effect_bank import EffectBankMonitor
 from effect_names import EffectNameReader
+from midimix_panel import MidimixPanel
 ROOT=Path(__file__).resolve().parents[1]
 RUNTIME=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/f'jack-hooks-{os.getuid()}'
 STATE=RUNTIME/'tsma-gui.json'
@@ -84,7 +85,10 @@ class Container:
   self.window.move(self.geometry['x'],self.geometry['y'])
   self.area=Gtk.DrawingArea();self.area.set_can_focus(True)
   self.area.set_visual(visual)
-  overlay=Gtk.Overlay();overlay.add(self.area);self.window.add(overlay)
+  overlay=Gtk.Overlay();overlay.add(self.area)
+  body=Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+  self.midimix_panel=MidimixPanel();body.pack_start(self.midimix_panel,False,False,0)
+  body.pack_start(overlay,True,True,0);self.window.add(body)
   self.lock=Gtk.EventBox();self.lock.set_visible_window(True)
   self.lock.set_above_child(True);self.lock.set_halign(Gtk.Align.START);self.lock.set_valign(Gtk.Align.START)
   self.lock.set_size_request(64,44);self.lock.set_margin_top(0)
@@ -100,6 +104,15 @@ class Container:
   self.window.show_all();self.area.grab_focus()
   GLib.idle_add(self.start)
   GLib.timeout_add(250,self.tick)
+ def reload_midimix(self):
+  # UI-only refresh: ToneLib, SooperLooper and the audio server keep running.
+  import importlib,midimix_panel
+  body=self.midimix_panel.get_parent()
+  self.midimix_panel.close();body.remove(self.midimix_panel)
+  self.midimix_panel=importlib.reload(midimix_panel).MidimixPanel()
+  body.pack_start(self.midimix_panel,False,False,0);body.reorder_child(self.midimix_panel,0)
+  self.midimix_panel.show_all()
+  return False
  def update_bank(self):
   bank=self.bank_monitor.poll();effect=self.bank_monitor.effect
   name=self.effect_names.update(effect,self.bank_monitor.generation,self.tone_window,self.env)
@@ -243,6 +256,7 @@ class Container:
    self.check_window.present();self.check_window.log('Finish the pedal configuration transaction before closing the kit.');return True
   if self.check_window is not None:self.check_window.destroy()
   self.remember_geometry()
+  self.midimix_panel.close()
   self.bank_monitor.close()
   self.effect_names.close()
   try:save_geometry(WINDOW_SETTINGS,self.geometry)
@@ -268,5 +282,6 @@ if __name__=='__main__':
   container=Container()
   def stop(*_):GLib.idle_add(lambda:(container.close(),container.window.destroy(),False)[-1])
   signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
+  signal.signal(signal.SIGUSR1,lambda *_:GLib.idle_add(container.reload_midimix))
   try:Gtk.main()
   finally:container.close()

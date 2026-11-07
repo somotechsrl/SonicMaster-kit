@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 
-def devices(text=None):
+def devices(text=None, names=('TSMEGA', 'SINCO')):
     text = Path('/proc/asound/seq/clients').read_text() if text is None else text
     result = []
     client = name = None
@@ -18,7 +18,7 @@ def devices(text=None):
         if line.startswith('Client'):
             client, name = (int(match[1]), match[2]) if match else (None, None)
         port = re.match(r'\s+Port\s+(\d+)\s+:\s+"([^"]+)" \(([^)]+)\)', line)
-        if client is not None and name in ('TSMEGA', 'SINCO') and port and 'R' in port[3] and 'e' in port[3]:
+        if client is not None and name in names and port and 'R' in port[3] and 'e' in port[3]:
             result.append({'client': client, 'port': int(port[1]), 'name': name, 'port_name': port[2]})
     return result
 

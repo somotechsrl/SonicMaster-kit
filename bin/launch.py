@@ -36,6 +36,9 @@ def main():
  required=['jack_control','sooperlooper','slgui','systemd-run','jack_lsp','jack_samplerate','zita-a2j','zita-j2a','Xephyr','openbox','xauth','xprop','wmctrl']
  missing=[x for x in required if not shutil.which(x)]
  if missing:raise RuntimeError('Esegui prima install-tsma. Programmi mancanti: '+', '.join(missing))
+ # Prepare optional Ardour integration only while the DAW is closed.
+ from midimix_setup import prepare
+ prepare(Path(os.environ.get('XDG_CONFIG_HOME') or HOME/'.config')/'ardour8')
  # Initial configurations are a recovery copy, never overwrite live presets.
  install_profile(ROOT,HOME)
  fresh_qjackctl(HOME)

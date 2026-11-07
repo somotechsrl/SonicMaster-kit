@@ -18,6 +18,8 @@ def decode(data):
  for t in types[1:]:
   if t=='s':v,pos=read_string(pos)
   elif t in ('i','f'):v=struct.unpack_from('>'+t,data,pos)[0];pos+=4
+  elif t=='h':v=struct.unpack_from('>q',data,pos)[0];pos+=8
+  elif t=='d':v=struct.unpack_from('>d',data,pos)[0];pos+=8
   else:raise ValueError('Unsupported OSC type '+t)
   args.append(v)
  return path,args
