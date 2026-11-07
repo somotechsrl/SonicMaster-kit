@@ -1,7 +1,7 @@
-"""MIDImix bank proxy and live Ardour names. No audio or gain is generated here.
+"""MIDImix bank proxy and live Ardour names. Audio is untouched; gain is set only for a user-operated unity detent.
 
 A private map adds absolute bank selection on MIDI channel 16. All hardware
-messages except Bank Left/Right pass unchanged to Generic MIDI. The worker's
+messages except Bank Left/Right and the unity detent pass to Generic MIDI. The worker's
 stdin is a lifetime lease: even a crashed GUI restores the physical connection.
 """
 import ctypes as C
@@ -67,6 +67,45 @@ class Bank:
     @property
     def command(self):
         return bytes((0x9F, self.index, 127))
+
+
+class UnityDetent:
+    """Snap only physical track-fader moves; preserve native MIDI elsewhere.
+
+    The curve and (CC-1)/126 normalization match Ardour 8 Generic MIDI.
+    A narrower entry band and wider release band prevent jitter at unity.
+    """
+    def __init__(self):
+        self.latched = set()
+
+    @staticmethod
+    def db_for_cc(value, max_gain=2.0):
+        if value <= 1:
+            return -math.inf
+        position = (value-1)/126
+        gain = math.exp(((position**(1/8)*198)-192)/6*math.log(2))*max_gain/2
+        return 20*math.log10(gain)
+
+    def target(self, raw, bank, max_gain=2.0):
+        if len(raw) != 3 or raw[0] != 0xB0 or raw[1] not in (19,23,27,31,49,53,57,61):
+            return None
+        index = (19,23,27,31,49,53,57,61).index(raw[1])
+        target = bank*8+index+1
+        band = .9 if target in self.latched else .45
+        if abs(self.db_for_cc(raw[2], max_gain)) <= band:
+            self.latched.add(target)
+            return target
+        self.latched.discard(target)
+        return None
+
+
+def maximum_gain(config):
+    try:
+        node = ET.parse(config/'config').find(".//Option[@name='max-gain']")
+        value = float(node.get('value'))
+        return value if math.isfinite(value) and value > 0 else 2.0
+    except (OSError, ET.ParseError, AttributeError, ValueError):
+        return 2.0
 
 
 class Midi(Sequencer):
@@ -165,7 +204,7 @@ class Names:
             if not self.configured or (now - self.last_reply > 3 and now >= self.next_config):
                 # All visible routes, excluding master/monitor/VCA, in the same
                 # presentation order as Generic MIDI's /route/... Bn bindings.
-                self.send('/set_surface', 0, 15, 16515, 0, 0, 0, self.udp.getsockname()[1])
+                self.send('/set_surface', 0, 1039, 16515, 0, 0, 0, self.udp.getsockname()[1])
                 self.configured = True
                 self.next_config = now + 5
                 # Drain Ardour's initial observer burst before requesting an
@@ -218,7 +257,8 @@ def worker():
     install_map(config)
     names = Names(int(os.environ.get('TSMA_ARDOUR_OSC_PORT', '3819')))
     lease = selectors.DefaultSelector(); lease.register(sys.stdin, selectors.EVENT_READ)
-    patch = Patch(); midi = None; source = None; bank = Bank()
+    patch = Patch(); midi = None; source = None; bank = Bank(); detent = UnityDetent()
+    max_gain = maximum_gain(config)
     next_scan = 0; last_state = None; next_bank = 0
     status = 'Ardour Midimix · configurazione automatica in corso…'
     try:
@@ -240,6 +280,7 @@ def worker():
                 if now >= next_scan:
                     next_scan = now + 1
                     prepare(config)
+                    max_gain = maximum_gain(config)
                     status = 'Ardour Midimix · in attesa di Ardour'
                     hardware = next((d for d in devices(names=('MIDI Mix',)) if d['name'] == 'MIDI Mix'), None)
                     current = (hardware['client'], hardware['port']) if hardware else None
@@ -247,7 +288,7 @@ def worker():
                     if current != source or not ready:
                         patch.restore()
                         if midi: midi.close()
-                        midi = None; source = None; bank = Bank()
+                        midi = None; source = None; bank = Bank(); detent = UnityDetent()
                     if current and ready and midi is None:
                         midi = Midi(CLIENT); midi.connect(hardware); source = current
                     if midi and not patch.original:
@@ -267,7 +308,11 @@ def worker():
                             continue
                         consumed = bank.consume(raw)
                         if patch.original:
-                            midi.emit(bank.command if consumed else raw)
+                            target = detent.target(raw, bank.index, max_gain) if not consumed else None
+                            if target is not None and live and target in names.rows:
+                                names.send('/strip/gain', target, 0.0)
+                            else:
+                                midi.emit(bank.command if consumed else raw)
                     if patch.original and now >= next_bank:
                         midi.emit(bank.command); next_bank = now + .5
                 active = bool(live and patch.original)

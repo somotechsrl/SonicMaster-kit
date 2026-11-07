@@ -41,6 +41,8 @@ class MidimixPanel(Gtk.Box):
         .tsma-meter trough {min-height:14px; background:#20272b; border:0; border-radius:2px;}
         .tsma-meter progress {min-height:14px; border:0; border-radius:2px;}
         .tsma-volume progress {background:#326b98;}
+        .tsma-volume.unity progress {background:#428fa1;}
+        .tsma-unity-mark {background:#f4ead2; min-width:2px;}
         .tsma-vu progress {background:linear-gradient(to right,#207943,#43b964);}
         .tsma-vu.warn progress {background:#c29528;}
         .tsma-vu.clip progress {background:#d64a43;}
@@ -63,7 +65,19 @@ class MidimixPanel(Gtk.Box):
                 bar.set_text(('Vol ' if kind == 'volume' else 'VU ')+'—')
                 bar.get_style_context().add_class('tsma-meter')
                 bar.get_style_context().add_class('tsma-'+kind)
-                content.pack_start(bar, False, False, 0); collection.append(bar)
+                if kind == 'volume':
+                    overlay = Gtk.Overlay(); overlay.add(bar)
+                    mark = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+                    mark.get_style_context().add_class('tsma-unity-mark')
+                    mark.set_halign(Gtk.Align.START); mark.set_valign(Gtk.Align.END)
+                    mark.set_size_request(2, 14)
+                    overlay.add_overlay(mark); overlay.set_overlay_pass_through(mark, True)
+                    overlay.connect('size-allocate', lambda _, rect, tick=mark: tick.set_margin_start(max(0, round((rect.width-2)*meter_fraction(0)))))
+                    overlay.set_tooltip_text('Tacca 0 dB · aggancio magnetico del fader MIDImix')
+                    content.pack_start(overlay, False, False, 0)
+                else:
+                    content.pack_start(bar, False, False, 0)
+                collection.append(bar)
             box.add(content); row.pack_start(box, True, True, 0)
             self.labels.append(label); self.boxes.append(box)
         self.pack_start(row, False, False, 0)
@@ -106,6 +120,10 @@ class MidimixPanel(Gtk.Box):
                 bar.set_fraction(meter_fraction(db))
                 bar.set_text(prefix+' '+db_text(db))
                 bar.set_tooltip_text(('Volume del fader' if key == 'gains' else 'Picco audio letto da Ardour')+' · '+name+' · '+db_text(db))
+                if key == 'gains':
+                    context = bar.get_style_context()
+                    if db is not None and abs(db) < .05: context.add_class('unity')
+                    else: context.remove_class('unity')
                 if key == 'meters':
                     context = bar.get_style_context()
                     for css, active in (('warn', db is not None and -6 <= db < 0), ('clip', db is not None and db >= 0)):

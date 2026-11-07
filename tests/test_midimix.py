@@ -39,6 +39,30 @@ class BankTests(unittest.TestCase):
             self.assertEqual(tree.find(".//Binding[@channel='16'][@note='7']").get('arg'),'7')
 
 
+class UnityDetentTests(unittest.TestCase):
+    def test_native_curve_silence_top_and_configurable_maximum(self):
+        detent=midimix.UnityDetent()
+        self.assertEqual(detent.db_for_cc(0),-float('inf'))
+        self.assertAlmostEqual(detent.db_for_cc(127),6.020599913,places=6)
+        self.assertAlmostEqual(detent.db_for_cc(127,1),0,places=6)
+        self.assertLess(abs(detent.db_for_cc(99)),.45)
+
+    def test_snap_release_hysteresis_and_bank_relative_target(self):
+        detent=midimix.UnityDetent()
+        message=lambda value:bytes((0xB0,19,value))
+        self.assertIsNone(detent.target(message(103),0))
+        self.assertEqual(detent.target(message(99),0),1)
+        self.assertEqual(detent.target(message(103),0),1)
+        self.assertIsNone(detent.target(message(104),0))
+        self.assertIsNone(detent.target(message(103),0))
+        self.assertEqual(detent.target(bytes((0xB0,49,100)),1),13)
+
+    def test_other_controls_channels_and_master_are_not_snapped(self):
+        detent=midimix.UnityDetent()
+        for raw in ((0xB0,62,99),(0xB1,19,99),(0x90,19,99),(0xB0,16,99)):
+            self.assertIsNone(detent.target(bytes(raw),0))
+
+
 class LiveNamesTests(unittest.TestCase):
     def test_complete_snapshot_rename_reorder_removal_timeout_reconnect(self):
         server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
