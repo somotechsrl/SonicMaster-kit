@@ -15,6 +15,18 @@ def db_text(db):
     return '—' if db is None else '−∞ dB' if db < -120 else f'{db:.1f} dB'
 
 
+def place_unity_mark(overlay, child, allocation, mark):
+    if child is not mark:
+        return False
+    width = overlay.get_allocated_width()
+    height = overlay.get_allocated_height()
+    allocation.x = max(0, round((width-2)*meter_fraction(0)))
+    allocation.y = max(0, height-14)
+    allocation.width = min(2, max(1, width))
+    allocation.height = min(14, max(1, height))
+    return True
+
+
 class MidimixPanel(Gtk.Box):
     def __init__(self):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=3)
@@ -72,7 +84,7 @@ class MidimixPanel(Gtk.Box):
                     mark.set_halign(Gtk.Align.START); mark.set_valign(Gtk.Align.END)
                     mark.set_size_request(2, 14)
                     overlay.add_overlay(mark); overlay.set_overlay_pass_through(mark, True)
-                    overlay.connect('size-allocate', lambda _, rect, tick=mark: tick.set_margin_start(max(0, round((rect.width-2)*meter_fraction(0)))))
+                    overlay.connect('get-child-position', place_unity_mark, mark)
                     overlay.set_tooltip_text('Tacca 0 dB · aggancio magnetico del fader MIDImix')
                     content.pack_start(overlay, False, False, 0)
                 else:
