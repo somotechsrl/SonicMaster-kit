@@ -43,7 +43,7 @@ def monitor_area():
 
 class Container:
  def __init__(self):
-  self.server=self.wm=None;self.env=None;self.ready=False;self.closed=False;self.last=None;self.peer=None
+  self.server=self.wm=None;self.keyboard_focus=None;self.env=None;self.ready=False;self.closed=False;self.last=None;self.peer=None
   self.looper_window=None;self.looper_min=(848,187)
   self.log=(ROOT/'log/gui.log').open('a')
   x,y,w,h=monitor_area();width=min(1506,w-80);height=min(920,h-130)
@@ -189,7 +189,7 @@ class Container:
     self.display=f':{number}'
     call(['xauth','-f',str(auth),'add',self.display,'.',secrets.token_hex(16)],check=True)
     xid=self.area.get_window().get_xid()
-    self.server=subprocess.Popen(['Xephyr',self.display,'-parent',str(xid),'-screen',f'{width}x{height}','-resizeable','-nolisten','tcp','-auth',str(auth),'-noreset','-title','TSMA Kit'],stdout=self.log,stderr=subprocess.STDOUT)
+    self.server=subprocess.Popen(['Xephyr',self.display,'-parent',str(xid),'-screen',f'{width}x{height}','-resizeable','-no-host-grab','-nolisten','tcp','-auth',str(auth),'-noreset','-title','TSMA Kit'],stdout=self.log,stderr=subprocess.STDOUT)
     self.env=os.environ.copy();self.env.update(DISPLAY=self.display,XAUTHORITY=str(auth),GDK_BACKEND='x11')
     deadline=time.monotonic()+4
     while time.monotonic()<deadline and self.server.poll() is None:
@@ -207,7 +207,10 @@ class Container:
     else:raise RuntimeError('Gestore delle finestre non pronto')
     children=call(['xwininfo','-id',str(xid),'-children']).stdout
     peer=re.search(r'(?m)^\s+(0x[0-9a-fA-F]+) "TSMA Kit":',children)
-    if peer:self.peer=GdkX11.X11Window.foreign_new_for_display(Gdk.Display.get_default(),int(peer[1],16))
+    if peer:
+     peer_id=int(peer[1],16)
+     self.peer=GdkX11.X11Window.foreign_new_for_display(Gdk.Display.get_default(),peer_id)
+     self.keyboard_focus=subprocess.Popen([os.environ.get('TSMA_PYTHON','/usr/bin/python3'),str(ROOT/'bin/keyboard_focus.py'),str(self.window.get_window().get_xid()),str(peer_id),str(os.getpid()),self.env['DISPLAY'],self.env['XAUTHORITY']],stdout=self.log,stderr=subprocess.STDOUT)
     self.ready=True
     STATE.write_text(json.dumps({'ready':True,'display':self.display,'xauthority':str(auth),'pid':os.getpid()}))
     return False
@@ -262,6 +265,8 @@ class Container:
   try:save_geometry(WINDOW_SETTINGS,self.geometry)
   except OSError as exc:print('Salvataggio finestra:',exc,file=self.log,flush=True)
   self.closed=True;STATE.unlink(missing_ok=True)
+  if self.keyboard_focus is not None and self.keyboard_focus.poll() is None:
+   self.keyboard_focus.terminate();self.keyboard_focus.wait(timeout=3)
   if self.drums_process is not None:self.drums_process.terminate()
   if self.ready:
    # Close gracefully while X is still alive so application settings can save.
