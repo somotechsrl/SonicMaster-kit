@@ -315,9 +315,11 @@ def worker():
                                 midi.emit(bank.command if consumed else raw)
                     if patch.original and now >= next_bank:
                         midi.emit(bank.command); next_bank = now + .5
-                active = bool(live and patch.original)
+                active = bool(live)
                 if active:
                     status = f'Ardour Midimix · Banco {bank.index+1} · Tracce {bank.index*8+1}–{bank.index*8+8}'
+                    if not patch.original:
+                        status += ' · lettura OSC, mappa MIDI esistente'
                 state = {'active': active, 'status': status,
                          'names': [names.rows.get(bank.index*8+i+1, '—') if active else '—' for i in range(8)],
                          'mutes': [names.mutes.get(bank.index*8+i+1) if active and bank.index*8+i+1 in names.rows else None for i in range(8)],
