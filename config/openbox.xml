@@ -475,4 +475,4 @@
 
 </menu>
 
-<applications><application class="ToneLib GFX" type="normal"><decor>no</decor><focus>yes</focus></application><application name="slgui" type="normal"><decor>no</decor><focus>yes</focus></application><application class="SooperLooper" type="normal"><decor>no</decor><focus>yes</focus></application></applications></openbox_config>
+<applications><application class="dev.skyggedans.sonicmaster" type="normal"><decor>no</decor><focus>yes</focus></application><application name="slgui" type="normal"><decor>no</decor><focus>yes</focus></application><application class="SooperLooper" type="normal"><decor>no</decor><focus>yes</focus></application></applications></openbox_config>

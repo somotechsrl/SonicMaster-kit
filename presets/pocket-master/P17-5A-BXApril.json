@@ -1,0 +1,122 @@
+{
+  "version": "1.0",
+  "presetName": "5A:BrandXApril",
+  "deviceName": "5A:BXApril",
+  "ampMode": "Normal",
+  "presetVolume": 50,
+  "presetBpm": 120,
+  "signalChain": [
+    "NR",
+    "FX1",
+    "DRV",
+    "AMP",
+    "IR",
+    "EQ",
+    "FX2",
+    "DLY",
+    "RVB"
+  ],
+  "modules": {
+    "NR": {
+      "enabled": false,
+      "effect": "Gate",
+      "effectId": 1,
+      "parameters": {
+        "THRE": 100
+      }
+    },
+    "FX1": {
+      "enabled": true,
+      "effect": "COMP 1",
+      "effectId": 101,
+      "parameters": {
+        "Sustain": 38,
+        "Vol": 50
+      }
+    },
+    "DRV": {
+      "enabled": false,
+      "effect": "Scream",
+      "effectId": 201,
+      "parameters": {
+        "Gain": 40,
+        "Tone": 70,
+        "Vol": 50
+      }
+    },
+    "AMP": {
+      "enabled": true,
+      "effect": "A BassVT",
+      "effectId": 321,
+      "parameters": {
+        "Gain": 26,
+        "Bass": 54,
+        "Middle": 58,
+        "MidFreq": 2,
+        "Treble": 42,
+        "Vol": 50
+      }
+    },
+    "IR": {
+      "enabled": false,
+      "effect": "Jazz 2x12",
+      "effectId": 408,
+      "parameters": {
+        "Vol": 50
+      }
+    },
+    "EQ": {
+      "enabled": true,
+      "effect": "Bass EQ",
+      "effectId": 503,
+      "parameters": {
+        "50Hz": -3,
+        "120Hz": 1,
+        "400Hz": 2,
+        "800Hz": 1,
+        "4.5kHz": -2,
+        "Vol": 50
+      }
+    },
+    "FX2": {
+      "enabled": false,
+      "effect": "A-Chorus",
+      "effectId": 106,
+      "parameters": {
+        "Depth": 50,
+        "Rate": 0.5,
+        "Tone": 50,
+        "Sync": 0
+      }
+    },
+    "DLY": {
+      "enabled": false,
+      "effect": "Pure",
+      "effectId": 701,
+      "parameters": {
+        "Mix": 20,
+        "Time": 500,
+        "F.Back": 30,
+        "Sync": 0,
+        "Trail": 0
+      }
+    },
+    "RVB": {
+      "enabled": true,
+      "effect": "Spring",
+      "effectId": 807,
+      "parameters": {
+        "Mix": 10,
+        "Decay": 16
+      }
+    }
+  },
+  "adaptationNotes": [
+    "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+    "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+    "Tempo riverbero in secondi approssimato con Decay percentuale",
+    "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+  ],
+  "sourcePreset": "patch_028.tlgfx",
+  "sourceLabel": "5A"
+}

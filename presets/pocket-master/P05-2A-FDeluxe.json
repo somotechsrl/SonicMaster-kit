@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "presetName": "2A:ArchtopFDRDeluxe",
+  "deviceName": "2A:FDeluxe",
+  "ampMode": "Normal",
+  "presetVolume": 50,
+  "presetBpm": 120,
+  "signalChain": [
+    "NR",
+    "FX1",
+    "DRV",
+    "AMP",
+    "IR",
+    "EQ",
+    "FX2",
+    "DLY",
+    "RVB"
+  ],
+  "modules": {
+    "NR": {
+      "enabled": false,
+      "effect": "Gate",
+      "effectId": 1,
+      "parameters": {
+        "THRE": 50
+      }
+    },
+    "FX1": {
+      "enabled": false,
+      "effect": "COMP 1",
+      "effectId": 101,
+      "parameters": {
+        "Sustain": 20,
+        "Vol": 50
+      }
+    },
+    "DRV": {
+      "enabled": true,
+      "effect": "Scream",
+      "effectId": 201,
+      "parameters": {
+        "Gain": 13,
+        "Tone": 14,
+        "Vol": 61
+      }
+    },
+    "AMP": {
+      "enabled": true,
+      "effect": "TWD Deluxe",
+      "effectId": 301,
+      "parameters": {
+        "Gain": 34,
+        "Tone": 50,
+        "Vol": 50
+      }
+    },
+    "IR": {
+      "enabled": true,
+      "effect": "Viblux 1x12",
+      "effectId": 403,
+      "parameters": {
+        "Vol": 50
+      }
+    },
+    "EQ": {
+      "enabled": false,
+      "effect": "GT EQ 1",
+      "effectId": 501,
+      "parameters": {
+        "125Hz": 0,
+        "400Hz": 0,
+        "800Hz": 0,
+        "1.6kHz": 0,
+        "4kHz": 0,
+        "Vol": 50
+      }
+    },
+    "FX2": {
+      "enabled": false,
+      "effect": "A-Chorus",
+      "effectId": 106,
+      "parameters": {
+        "Depth": 50,
+        "Rate": 0.5,
+        "Tone": 50,
+        "Sync": 0
+      }
+    },
+    "DLY": {
+      "enabled": false,
+      "effect": "Pure",
+      "effectId": 701,
+      "parameters": {
+        "Mix": 20,
+        "Time": 500,
+        "F.Back": 30,
+        "Sync": 0,
+        "Trail": 0
+      }
+    },
+    "RVB": {
+      "enabled": true,
+      "effect": "Spring",
+      "effectId": 807,
+      "parameters": {
+        "Mix": 42,
+        "Decay": 70
+      }
+    }
+  },
+  "adaptationNotes": [
+    "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+    "Tempo riverbero in secondi approssimato con Decay percentuale",
+    "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+  ],
+  "sourcePreset": "patch_006.tlgfx",
+  "sourceLabel": "2A"
+}

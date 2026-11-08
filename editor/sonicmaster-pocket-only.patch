@@ -1,0 +1,380 @@
+diff --git a/app/lib/device/device_service.dart b/app/lib/device/device_service.dart
+index 3ed332c..67b2f83 100644
+--- a/app/lib/device/device_service.dart
++++ b/app/lib/device/device_service.dart
+@@ -202,6 +202,16 @@ class DeviceService {
+     ),
+   );
+ 
++  /// Read the active slot without selecting or saving a preset.
++  Future<void> requestCurrentPreset() async {
++    await _serialized(() => awaitFirst<bool>(
++      inbound,
++      () => sendFrame('8080F0000700010000000201020403F7'),
++      (m) => m is DataFrame && m.hex.toUpperCase().contains('01020403') ? true : null,
++      timeout: const Duration(seconds: 2),
++    ));
++  }
++
+   /// Request current preset state (`020401`) and returns the reassembled dump
+   /// frame hex, or null on timeout.
+   static const _stateRequest = '8080F0000900010000000201020401F7';
+@@ -211,7 +221,7 @@ class DeviceService {
+     () => awaitFirst<String>(
+       inbound,
+       () => sendFrame(_stateRequest),
+-      (m) => m is DataFrame ? m.hex : null,
++      (m) => m is DataFrame && m.hex.toUpperCase().length >= 30 && m.hex.toUpperCase().substring(22,30) == '01020401' ? m.hex : null,
+       timeout: timeout,
+     ),
+   );
+diff --git a/app/lib/device/inbound_pipeline.dart b/app/lib/device/inbound_pipeline.dart
+index 48ba1df..b4ff048 100644
+--- a/app/lib/device/inbound_pipeline.dart
++++ b/app/lib/device/inbound_pipeline.dart
+@@ -1,34 +1,26 @@
+ import 'dart:typed_data';
+-
+ import '../protocol/inbound_message.dart';
+ import '../protocol/multi_packet_reassembler.dart';
+ 
+-/// Turns a stream of raw wire messages (each a complete `F0 … F7`) into a
+-/// stream of classified [InboundMessage]s, reassembling multi-packet responses
+-/// via a single [MultiPacketReassembler].
+-///
+-/// Hardened against noise: USB MIDI interleaves short System Real-Time bytes
+-/// (Active Sensing `0xFE`, Clock `0xF8`, …) and can deliver truncated packets.
+-/// Anything that isn't a plausible SysEx packet is skipped, and a packet that
+-/// still trips the reassembler is dropped — one bad message must never unwind
+-/// this generator and kill the whole session's inbound pipeline.
++/// Frame arbitrary native MIDI chunks before reassembling device responses.
+ Stream<InboundMessage> classifyInbound(Stream<Uint8List> wireMessages) async* {
+   final reassembler = MultiPacketReassembler();
+-
+-  await for (final message in wireMessages) {
+-    // Reassembler indexes bytes[3..6]; a SysEx packet is F0-led and >= 7 bytes.
+-    if (message.length < 7 || message.first != 0xF0) continue;
+-
+-    String? frameHex;
+-
+-    try {
+-      frameHex = reassembler.addPacket(message);
+-    } catch (_) {
+-      continue;
+-    }
+-
+-    if (frameHex != null) {
+-      yield InboundMessage.classify(frameHex);
++  List<int>? pending;
++  await for (final chunk in wireMessages) {
++    for (final byte in chunk) {
++      if (byte >= 0xF8) continue; // Interleaved MIDI real-time events.
++      if (byte == 0xF0) { pending = [byte]; continue; }
++      if (pending == null) continue;
++      pending.add(byte);
++      if (pending.length > 65536) { pending = null; continue; }
++      if (byte != 0xF7) continue;
++      final packet = pending;
++      pending = null;
++      if (packet.length < 7) continue;
++      try {
++        final frame = reassembler.addPacket(packet);
++        if (frame != null) yield InboundMessage.classify(frame);
++      } catch (_) { /* Malformed input must not terminate reception. */ }
+     }
+   }
+ }
+diff --git a/app/lib/device/transport_factory_io.dart b/app/lib/device/transport_factory_io.dart
+index dfbdd68..7cffce4 100644
+--- a/app/lib/device/transport_factory_io.dart
++++ b/app/lib/device/transport_factory_io.dart
+@@ -17,7 +17,7 @@ Future<List<UsbMidiDevice>> enumerateMidiDevices() async {
+   final devices = await MidiCommand().devices ?? const [];
+ 
+   return [
+-    for (final d in devices)
++    for (final d in devices.where((d) => d.name.trim().toLowerCase() == 'pocket master'))
+       UsbMidiDevice(
+         d.name,
+         hasInput: d.inputPorts.isNotEmpty,
+diff --git a/app/lib/device/transport_packages.dart b/app/lib/device/transport_packages.dart
+index 7847df4..d629f86 100644
+--- a/app/lib/device/transport_packages.dart
++++ b/app/lib/device/transport_packages.dart
+@@ -17,7 +17,7 @@ const bleMidiCharUuid = '7772e5db-3868-4112-a1a9-f2669d106bf3';
+ 
+ /// Default device-name substrings used when the caller passes no explicit
+ /// target — mirrors the earlier `UsbTransport`/`BleTransport` defaults.
+-const _defaultUsbTarget = 'Smart Box';
++const _defaultUsbTarget = 'Pocket Master';
+ const _defaultBleTarget = 'Smart Box BLE';
+ 
+ /// USB-MIDI transport backed by `flutter_midi_command` — native CoreMIDI/ALSA/
+@@ -57,13 +57,13 @@ class MidiCommandTransport implements Transport {
+ 
+   @override
+   Future<void> connect({String? target}) async {
+-    final needle = (target ?? _defaultUsbTarget).toLowerCase();
++    const needle = 'pocket master';
+ 
+     // Enumerating devices triggers the browser's Web MIDI (SysEx) permission
+     // prompt on web — this must be reached from a user gesture there.
+     final devices = await _midi.devices ?? <MidiDevice>[];
+ 
+-    final matches = devices.where((d) => d.name.toLowerCase().contains(needle));
++    final matches = devices.where((d) => d.name.trim().toLowerCase() == needle);
+ 
+     if (matches.isEmpty) {
+       throw StateError('No MIDI device matching "$target"');
+diff --git a/app/lib/protocol/tlv_state_dump.dart b/app/lib/protocol/tlv_state_dump.dart
+new file mode 100644
+index 0000000..a4b37e7
+--- /dev/null
++++ b/app/lib/protocol/tlv_state_dump.dart
+@@ -0,0 +1,85 @@
++import 'dart:typed_data';
++import '../model/command_library.dart';
++import '../model/decoded_preset_state.dart';
++import '../model/effect_library.dart';
++import '../model/modules.dart';
++
++/// Decode the device's tagged state records, independent of USB packet splits.
++/// Layout cross-checked with pocket-master-mcp (MIT) and live read-only dumps.
++class TlvStateDump {
++  TlvStateDump(this.body, this.tags);
++  final Uint8List body;
++  final Map<int, Uint8List> tags;
++
++  static TlvStateDump? decode(String frame) {
++    try {
++      final h=frame.toUpperCase();
++      if (!h.startsWith('8080F0') || !h.endsWith('F7') || h.length<30) return null;
++      final n=[for(var i=22;i<h.length-2;i+=2) int.parse(h.substring(i,i+2),radix:16)];
++      if(n.length.isOdd || n.any((b)=>b>15)) return null;
++      final b=Uint8List.fromList([for(var i=0;i<n.length;i+=2) n[i]*16+n[i+1]]);
++      if(b.length<6 || b[0]!=0x12 || b[1]!=0x41) return null;
++      final data=ByteData.sublistView(b);
++      final start=6+data.getUint16(4,Endian.little);
++      if(start>b.length) return null;
++      final tags=<int,Uint8List>{};
++      for(var at=start;at+4<=b.length;) {
++        final length=data.getUint16(at+2,Endian.little), end=at+4+length;
++        if(end>b.length) return null;
++        for(var p=at+4;p+4<=end;) {
++          final tag=data.getUint16(p,Endian.little), size=data.getUint16(p+2,Endian.little);
++          if(p+4+size>end) break;
++          tags[tag]=Uint8List.sublistView(b,p+4,p+4+size);p+=4+size;
++        }
++        at=end;
++      }
++      if(!tags.containsKey(0x3001)||!tags.containsKey(0x3002)||!tags.containsKey(0x3003)||!tags.containsKey(0x3004)) return null;
++      return TlvStateDump(b,tags);
++    } catch (_) {return null;}
++  }
++
++  int word(int tag,int fallback) {
++    final b=tags[tag];return b!=null&&b.length>=4?ByteData.sublistView(b).getUint32(0,Endian.little):fallback;
++  }
++
++  DecodedPresetState state(Modules modules) {
++    final mask=word(0x3001,0);
++    final chain=[for(final id in tags[0x3002]!.take(9)) if(modules.nameOf(id)!=null) modules.nameOf(id)!];
++    final data=ByteData.sublistView(body);
++    return DecodedPresetState(isCloneMode:(mask&512)!=0,presetVolume:word(0x2001,75),presetBpm:word(0x2002,120),
++      moduleStates:{for(var i=0;i<9;i++) if(modules.nameOf(i)!=null) modules.nameOf(i)!:(mask&(1<<i))!=0},chainOrder:chain,
++      footswitchFs1Mask:body.length>=474?data.getUint16(468,Endian.little):0,
++      footswitchFs2Mask:body.length>=474?data.getUint16(472,Endian.little):0);
++  }
++
++  Map<int,int> selected(CommandLibrary commands) {
++    final data=ByteData.sublistView(tags[0x3003]!);final result=<int,int>{0:1};
++    for(final entry in commands.effectTypes.entries) {
++      final id=entry.key;if(id*4+4>data.lengthInBytes) continue;
++      final code=data.getUint32(id*4,Endian.little);
++      for(final effect in entry.value.entries) {
++        var h=effect.value.toUpperCase();if(h.startsWith('8080')) h=h.substring(4);
++        h=h.substring(2,h.length-2);
++        final n=[for(var i=0;i<h.length;i+=2) int.parse(h.substring(i,i+2),radix:16)];
++        final b=Uint8List.fromList([for(var i=0;i<n.length;i+=2)n[i]*16+n[i+1]]);
++        if(b.length>=8 && ByteData.sublistView(b).getUint32(b.length-4,Endian.little)==code) {result[id]=effect.key;break;}
++      }
++    }
++    return result;
++  }
++
++  Map<int,Map<int,num>> parameters(EffectLibrary effects,Map<int,int> selected) {
++    final data=ByteData.sublistView(tags[0x3004]!);final result=<int,Map<int,num>>{};
++    for(final entry in selected.entries) {
++      final def=effects.byId(entry.value);if(def==null) continue;
++      final values=<int,num>{};
++      for(final param in def.params) {
++        final at=entry.key*32+param.algId*4;if(at+4>data.lengthInBytes) continue;
++        final value=data.getFloat32(at,Endian.little);if(!value.isFinite) continue;
++        values[param.algId]=(value-value.round()).abs()<1e-5?value.round():double.parse(value.toStringAsFixed(5));
++      }
++      result[entry.key]=values;
++    }
++    return result;
++  }
++}
+diff --git a/app/lib/state/preset_providers.dart b/app/lib/state/preset_providers.dart
+index 2039686..f3106cd 100644
+--- a/app/lib/state/preset_providers.dart
++++ b/app/lib/state/preset_providers.dart
+@@ -1,3 +1,4 @@
++import '../protocol/tlv_state_dump.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../device/device_service.dart';
+@@ -107,9 +108,7 @@ Future<void> loadPreset(WidgetRef ref, PresetRef preset) async {
+ /// Re-reads the current preset state from the device and refreshes the decoded
+ /// providers (state / selected effects / params). Best-effort; clears on failure.
+ Future<void> refreshDecodedState(WidgetRef ref) async {
+-  final data = ref.read(dataAssetsProvider).valueOrNull;
+-
+-  if (data == null) return;
++  final data = await ref.read(dataAssetsProvider.future);
+ 
+   final service = ref.read(deviceServiceProvider);
+ 
+@@ -148,6 +147,16 @@ Future<void> refreshDecodedState(WidgetRef ref) async {
+ /// providers. Shared by [refreshDecodedState] (solicited) and the hardware-sync
+ /// handler (unsolicited device broadcast).
+ void applyDecodedDump(WidgetRef ref, DataAssets data, String dumpHex) {
++  final tlv=TlvStateDump.decode(dumpHex);
++  print('Kit state read: length=${dumpHex.length}, structured=${tlv!=null}');
++  if(tlv!=null) {
++    final selected=tlv.selected(data.commands);
++    ref.read(currentPresetStateProvider.notifier).state=tlv.state(data.modules);
++    ref.read(currentSelectedEffectsProvider.notifier).state=selected;
++    ref.read(currentParametersProvider.notifier).state=tlv.parameters(data.effects,selected);
++    return;
++  }
++
+   final selected = SelectedEffectsDecoder(data.signatures).decode(dumpHex);
+ 
+   ref.read(currentPresetStateProvider.notifier).state = PresetStateDecoder(
+diff --git a/app/lib/state/reconnect.dart b/app/lib/state/reconnect.dart
+index 40360d1..a31e229 100644
+--- a/app/lib/state/reconnect.dart
++++ b/app/lib/state/reconnect.dart
+@@ -38,7 +38,7 @@ Future<bool> connectAndSync(
+   } else {
+     // The picked target is already the real MIDI device name (the picker lists
+     // full device names), so use it directly.
+-    resolvedName = target ?? 'Smart Box';
++    resolvedName = target ?? 'Pocket Master';
+   }
+ 
+   ref.read(connectedDeviceNameProvider.notifier).state = resolvedName;
+@@ -60,6 +60,8 @@ Future<bool> connectAndSync(
+   }
+ 
+   await refreshGlobalSettings(ref);
++  await ref.read(deviceServiceProvider).requestCurrentPreset();
++  await refreshDecodedState(ref);
+   unawaited(refreshNames(ref));
+ 
+   return true;
+@@ -207,7 +209,21 @@ Future<void> checkUsbLiveness(
+ /// a silent USB drop, then poll the pedal for on-device global-settings changes.
+ /// Skips the poll if the liveness check just disconnected.
+ Future<void> deviceHeartbeat(WidgetRef ref) async {
+-  if (!ref.read(connectionStateProvider)) return;
++  if (!ref.read(connectionStateProvider)) {
++    if (ref.read(transportKindProvider) == .usb &&
++        ref.read(connectionPrefsProvider).autoConnectProfile != null &&
++        !ref.read(reconnectingProvider)) {
++      ref.read(reconnectingProvider.notifier).state = true;
++      try {
++        await connectAndSync(ref, target: 'Pocket Master', statusOnSuccess: 'connected');
++      } catch (_) {
++        ref.read(presetLoadStatusProvider.notifier).state = 'waiting for Pocket Master USB';
++      } finally {
++        ref.read(reconnectingProvider.notifier).state = false;
++      }
++    }
++    return;
++  }
+ 
+   await checkUsbLiveness(ref);
+ 
+diff --git a/app/rust_builder/linux/CMakeLists.txt b/app/rust_builder/linux/CMakeLists.txt
+index 2d2575f..dc05c01 100644
+--- a/app/rust_builder/linux/CMakeLists.txt
++++ b/app/rust_builder/linux/CMakeLists.txt
+@@ -7,6 +7,11 @@ cmake_minimum_required(VERSION 3.10)
+ set(PROJECT_NAME "clo_generator")
+ project(${PROJECT_NAME} LANGUAGES CXX)
+ 
++if(DEFINED ENV{SONICMASTER_CLO_LIBRARY})
++  # Reuse the unmodified DSP library from the installed official 1.0.10 build.
++  set(clo_generator_bundled_libraries "$ENV{SONICMASTER_CLO_LIBRARY}" PARENT_SCOPE)
++  return()
++endif()
+ include("../cargokit/cmake/cargokit.cmake")
+ apply_cargokit(${PROJECT_NAME} ../../rust clo_generator "")
+ 
+diff --git a/app/test/device/inbound_pipeline_test.dart b/app/test/device/inbound_pipeline_test.dart
+index e584b6a..c805696 100644
+--- a/app/test/device/inbound_pipeline_test.dart
++++ b/app/test/device/inbound_pipeline_test.dart
+@@ -13,6 +13,16 @@ Uint8List bytesOfHex(String hex) {
+ }
+ 
+ void main() {
++  test('handles split and coalesced packets with realtime bytes', () async {
++    final packet = bytesOfHex('F0070A000100000003010204050001F7');
++    final msgs = await classifyInbound(Stream.fromIterable([
++      Uint8List.fromList(packet.take(5).toList()),
++      Uint8List.fromList([0xFE, ...packet.skip(5), ...packet]),
++    ])).toList();
++    expect(msgs, hasLength(2));
++    expect(msgs.every((m) => m is PresetModifiedMessage), isTrue);
++  });
++
+   test(
+     'classifies a single-packet frame (preset MODIFIED, wire form)',
+     () async {
+diff --git a/app/test/protocol/tlv_state_dump_test.dart b/app/test/protocol/tlv_state_dump_test.dart
+new file mode 100644
+index 0000000..08d10ff
+--- /dev/null
++++ b/app/test/protocol/tlv_state_dump_test.dart
+@@ -0,0 +1,36 @@
++import 'dart:convert';
++import 'dart:io';
++import 'dart:typed_data';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:sonicmaster/model/command_library.dart';
++import 'package:sonicmaster/model/effect_library.dart';
++import 'package:sonicmaster/model/modules.dart';
++import 'package:sonicmaster/protocol/tlv_state_dump.dart';
++
++List<int> word(int value)=>[value&255,(value>>8)&255];
++List<int> u32(int value)=>[...word(value),...word(value>>16)];
++List<int> record(int tag,List<int> value)=>[...word(tag),...word(value.length),...value];
++String frame(List<int> body)=>'8080F00000000100000000${body.expand((b)=>[b>>4,b&15]).map((b)=>b.toRadixString(16).padLeft(2,'0')).join()}F7';
++void main(){
++ final modules=Modules.fromJson(jsonDecode(File('assets/data/modules.json').readAsStringSync()));
++ final commands=CommandLibrary.fromJson(jsonDecode(File('assets/data/command_library.json').readAsStringSync()));
++ final effects=EffectLibrary.fromJson(jsonDecode(File('assets/data/effect_library.json').readAsStringSync()));
++ test('Tagged state decodes changing header sizes, models and raw float params',(){
++  final bytes=Uint8List(320);ByteData.sublistView(bytes).setFloat32(96,27,Endian.little);
++  final header=record(1,[2,0,0,0]);
++  final body=[0x12,0x41,255,0,...word(header.length),...header,
++   ...record(1,[...record(0x2001,u32(50)),...record(0x2002,u32(120))]),
++   ...record(2,[...record(0x3001,u32(10)),...record(0x3002,[0,1,2,3,4,5,6,7,8,9]),
++    ...record(0x3003,[for(final code in [27,0,0x03000000,0x07000073,0,0,0x04000000,0,0,0])...u32(code)]),...record(0x3004,bytes)])];
++  final dump=TlvStateDump.decode(frame(body));expect(dump,isNotNull);
++  final state=dump!.state(modules);expect(state.presetVolume,50);expect(state.presetBpm,120);
++  expect(state.moduleStates['AMP'],true);expect(state.chainOrder.length,9);
++  final selected=dump.selected(commands);expect(selected[3],321);
++  expect(dump.parameters(effects,selected)[3]![0],27);
++ });
++ test('Malformed and unrelated replies are rejected',(){
++  expect(TlvStateDump.decode('8080F0F7'),isNull);
++  expect(TlvStateDump.decode(frame([0x12,0x10,0,0,0,0])),isNull);
++  expect(TlvStateDump.decode(frame([0x12,0x41,255,0,200,0])),isNull);
++ });
++}

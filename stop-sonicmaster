@@ -1,0 +1,5 @@
+#!/bin/bash
+# Leave the shared JACK server, Pocket bridge and Ardour running.
+systemctl --user stop sonicmaster-gui.service 2>/dev/null
+systemctl --user stop sonicmaster-editor.service sonicmaster-looper-gui.service sonicmaster-midi.service sonicmaster-routing.service sonicmaster-engine.service 2>/dev/null
+exit 0

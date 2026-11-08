@@ -1,5 +1,0 @@
-#!/bin/bash
-set -e
-kit_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-mkdir -p -- "$kit_dir/log"
-exec "${TSMA_PYTHON:-/usr/bin/python3}" "$kit_dir/bin/launch.py" >> "$kit_dir/log/avvio.log" 2>&1

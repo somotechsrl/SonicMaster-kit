@@ -1,0 +1,518 @@
+[
+  {
+    "slot": 1,
+    "name": "1A:EqChoRv",
+    "source": "Eq + Chorus + Reverb",
+    "sourceLabel": "1A",
+    "file": "P01-1A-EqChoRv.json",
+    "notes": [
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Mt-Chorus adattato: mix e ritardi interni non equivalenti",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 2,
+    "name": "1B:Blues",
+    "source": "Crunchy Blues",
+    "sourceLabel": "1B",
+    "file": "P02-1B-Blues.json",
+    "notes": [
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 3,
+    "name": "1C:Jazz",
+    "source": "Jazz Clean",
+    "sourceLabel": "1C",
+    "file": "P03-1C-Jazz.json",
+    "notes": [
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Pickup Mod senza equivalente diretto; non trasferito",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 4,
+    "name": "1D:VoxAC30",
+    "source": "Archtop VOX AC30",
+    "sourceLabel": "1D",
+    "file": "P04-1D-VoxAC30.json",
+    "notes": [
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 5,
+    "name": "2A:FDeluxe",
+    "source": "Archtop FDR Deluxe",
+    "sourceLabel": "2A",
+    "file": "P05-2A-FDeluxe.json",
+    "notes": [
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 6,
+    "name": "2B:JTM45",
+    "source": "Archtop MSH JTM45",
+    "sourceLabel": "2B",
+    "file": "P06-2B-JTM45.json",
+    "notes": [
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 7,
+    "name": "2C:SantCln",
+    "source": "Santana Style - Clean",
+    "sourceLabel": "2C",
+    "file": "P07-2C-SantCln.json",
+    "notes": [
+      "Booster approssimato con Butter OD",
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 8,
+    "name": "2D:SantCrn",
+    "source": "Santana Style - Crunch",
+    "sourceLabel": "2D",
+    "file": "P08-2D-SantCrn.json",
+    "notes": [
+      "Stadi drive multipli ridotti a un solo blocco DRV",
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 9,
+    "name": "3A:SantDrv",
+    "source": "Santana Style - Drive",
+    "sourceLabel": "3A",
+    "file": "P09-3A-SantDrv.json",
+    "notes": [
+      "Cent OD approssimato con Scream",
+      "Amplificatori paralleli ridotti al modello principale: Ms JCM800",
+      "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+      "Mt-Chorus adattato: mix e ritardi interni non equivalenti",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "IR Processor senza equivalente diretto; non trasferito",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 10,
+    "name": "3B:OmegaBs",
+    "source": "Omega Station Bass 1",
+    "sourceLabel": "3B",
+    "file": "P10-3B-OmegaBs.json",
+    "notes": [
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 11,
+    "name": "3C:FXBass",
+    "source": "FX Bass",
+    "sourceLabel": "3C",
+    "file": "P11-3C-FXBass.json",
+    "notes": [
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Flanger adattato: mix e ritardi interni non equivalenti",
+      "Vibe omesso: entrambi i blocchi FX occupati",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 12,
+    "name": "3D:Newsted",
+    "source": "Jason Newsted Clean",
+    "sourceLabel": "3D",
+    "file": "P12-3D-Newsted.json",
+    "notes": [
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 13,
+    "name": "4A:SlapBas",
+    "source": "Slap Bass",
+    "sourceLabel": "4A",
+    "file": "P13-4A-SlapBas.json",
+    "notes": [
+      "Booster approssimato con Butter OD",
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Bi-Chorus adattato: mix e ritardi interni non equivalenti",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 14,
+    "name": "4B:Mic",
+    "source": "Microfone",
+    "sourceLabel": "4B",
+    "file": "P14-4B-Mic.json",
+    "notes": [
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 15,
+    "name": "4C:JacoBrd",
+    "source": "Jaco Birdland",
+    "sourceLabel": "4C",
+    "file": "P15-4C-JacoBrd.json",
+    "notes": [
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 16,
+    "name": "4D:JacoChk",
+    "source": "Jaco Chicken",
+    "sourceLabel": "4D",
+    "file": "P16-4D-JacoChk.json",
+    "notes": [
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Vibe adattato: mix e ritardi interni non equivalenti",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 17,
+    "name": "5A:BXApril",
+    "source": "BrandX April",
+    "sourceLabel": "5A",
+    "file": "P17-5A-BXApril.json",
+    "notes": [
+      "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+      "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+      "Tempo riverbero in secondi approssimato con Decay percentuale",
+      "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+    ]
+  },
+  {
+    "slot": 18,
+    "name": "Empty P18",
+    "source": null,
+    "file": "P18-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 19,
+    "name": "Empty P19",
+    "source": null,
+    "file": "P19-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 20,
+    "name": "Empty P20",
+    "source": null,
+    "file": "P20-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 21,
+    "name": "Empty P21",
+    "source": null,
+    "file": "P21-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 22,
+    "name": "Empty P22",
+    "source": null,
+    "file": "P22-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 23,
+    "name": "Empty P23",
+    "source": null,
+    "file": "P23-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 24,
+    "name": "Empty P24",
+    "source": null,
+    "file": "P24-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 25,
+    "name": "Empty P25",
+    "source": null,
+    "file": "P25-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 26,
+    "name": "Empty P26",
+    "source": null,
+    "file": "P26-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 27,
+    "name": "Empty P27",
+    "source": null,
+    "file": "P27-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 28,
+    "name": "Empty P28",
+    "source": null,
+    "file": "P28-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 29,
+    "name": "Empty P29",
+    "source": null,
+    "file": "P29-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 30,
+    "name": "Empty P30",
+    "source": null,
+    "file": "P30-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 31,
+    "name": "Empty P31",
+    "source": null,
+    "file": "P31-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 32,
+    "name": "Empty P32",
+    "source": null,
+    "file": "P32-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 33,
+    "name": "Empty P33",
+    "source": null,
+    "file": "P33-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 34,
+    "name": "Empty P34",
+    "source": null,
+    "file": "P34-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 35,
+    "name": "Empty P35",
+    "source": null,
+    "file": "P35-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 36,
+    "name": "Empty P36",
+    "source": null,
+    "file": "P36-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 37,
+    "name": "Empty P37",
+    "source": null,
+    "file": "P37-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 38,
+    "name": "Empty P38",
+    "source": null,
+    "file": "P38-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 39,
+    "name": "Empty P39",
+    "source": null,
+    "file": "P39-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 40,
+    "name": "Empty P40",
+    "source": null,
+    "file": "P40-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 41,
+    "name": "Empty P41",
+    "source": null,
+    "file": "P41-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 42,
+    "name": "Empty P42",
+    "source": null,
+    "file": "P42-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 43,
+    "name": "Empty P43",
+    "source": null,
+    "file": "P43-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 44,
+    "name": "Empty P44",
+    "source": null,
+    "file": "P44-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 45,
+    "name": "Empty P45",
+    "source": null,
+    "file": "P45-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 46,
+    "name": "Empty P46",
+    "source": null,
+    "file": "P46-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 47,
+    "name": "Empty P47",
+    "source": null,
+    "file": "P47-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 48,
+    "name": "Empty P48",
+    "source": null,
+    "file": "P48-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 49,
+    "name": "Empty P49",
+    "source": null,
+    "file": "P49-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  },
+  {
+    "slot": 50,
+    "name": "Empty P50",
+    "source": null,
+    "file": "P50-Empty.json",
+    "notes": [
+      "Slot inizializzato con tutti gli effetti bypassati"
+    ]
+  }
+]

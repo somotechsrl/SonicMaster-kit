@@ -1,7 +1,5 @@
-# Local application files
+# Local editor bundle
 
-This directory is excluded from Git except for this document and its placeholder.
+`sonicmaster/` contains the locally built, Pocket-Master-only SonicMaster editor. Build it with `python3 editor/build.py --flutter /path/to/flutter/bin/flutter`. The editor and unchanged DSP library are MIT licensed; notices are preserved. Generated binaries are excluded from Git.
 
-Install ToneLib GFX separately from https://tonelib.net/downloads.html. The launcher uses the installed `ToneLib-GFX` executable, or a local `vendor/ToneLib-GFX` copy when supplied privately by its licensed user.
-
-`install-tsma` builds `slgui-lock.so` here from `src/slgui-lock.c`. Neither proprietary executables nor license/registration files belong in this repository.
+`slgui-lock.so` is built locally from `src/slgui-lock.c`. ToneLib GFX is not part of this kit.

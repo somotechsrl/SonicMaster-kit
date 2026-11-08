@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "presetName": "3D:JasonNewstedClean",
+  "deviceName": "3D:Newsted",
+  "ampMode": "Normal",
+  "presetVolume": 50,
+  "presetBpm": 120,
+  "signalChain": [
+    "NR",
+    "FX1",
+    "DRV",
+    "AMP",
+    "IR",
+    "EQ",
+    "FX2",
+    "DLY",
+    "RVB"
+  ],
+  "modules": {
+    "NR": {
+      "enabled": false,
+      "effect": "Gate",
+      "effectId": 1,
+      "parameters": {
+        "THRE": 65
+      }
+    },
+    "FX1": {
+      "enabled": false,
+      "effect": "COMP 1",
+      "effectId": 101,
+      "parameters": {
+        "Sustain": 20,
+        "Vol": 50
+      }
+    },
+    "DRV": {
+      "enabled": false,
+      "effect": "Scream",
+      "effectId": 201,
+      "parameters": {
+        "Gain": 40,
+        "Tone": 70,
+        "Vol": 50
+      }
+    },
+    "AMP": {
+      "enabled": true,
+      "effect": "A BassVT",
+      "effectId": 321,
+      "parameters": {
+        "Gain": 32,
+        "Bass": 62,
+        "Middle": 42,
+        "MidFreq": 2,
+        "Treble": 70,
+        "Vol": 50
+      }
+    },
+    "IR": {
+      "enabled": false,
+      "effect": "Jazz 2x12",
+      "effectId": 408,
+      "parameters": {
+        "Vol": 50
+      }
+    },
+    "EQ": {
+      "enabled": false,
+      "effect": "GT EQ 1",
+      "effectId": 501,
+      "parameters": {
+        "125Hz": 0,
+        "400Hz": 0,
+        "800Hz": 0,
+        "1.6kHz": 0,
+        "4kHz": 0,
+        "Vol": 50
+      }
+    },
+    "FX2": {
+      "enabled": false,
+      "effect": "A-Chorus",
+      "effectId": 106,
+      "parameters": {
+        "Depth": 50,
+        "Rate": 0.5,
+        "Tone": 50,
+        "Sync": 0
+      }
+    },
+    "DLY": {
+      "enabled": false,
+      "effect": "Pure",
+      "effectId": 701,
+      "parameters": {
+        "Mix": 20,
+        "Time": 500,
+        "F.Back": 30,
+        "Sync": 0,
+        "Trail": 0
+      }
+    },
+    "RVB": {
+      "enabled": true,
+      "effect": "Room",
+      "effectId": 802,
+      "parameters": {
+        "Mix": 59,
+        "Decay": 45
+      }
+    }
+  },
+  "adaptationNotes": [
+    "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+    "Tempo riverbero in secondi approssimato con Decay percentuale",
+    "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+  ],
+  "sourcePreset": "patch_014.tlgfx",
+  "sourceLabel": "3D"
+}

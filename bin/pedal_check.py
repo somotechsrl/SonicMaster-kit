@@ -31,7 +31,7 @@ def guard_available():
 
 class PedalCheck(Gtk.Window):
     def __init__(self, parent=None):
-        super().__init__(title='TSMA Kit — Pedal Check', transient_for=parent)
+        super().__init__(title='SonicMaster-kit — Pedal Check', transient_for=parent)
         self.set_position(Gtk.WindowPosition.CENTER_ON_PARENT if parent is not None else Gtk.WindowPosition.CENTER)
         self.set_default_size(900, 700)
         self.set_border_width(12)
@@ -61,26 +61,9 @@ class PedalCheck(Gtk.Window):
         self.instruction = Gtk.Label(label='Start a guided test to verify each physical switch.', xalign=0)
         self.instruction.set_line_wrap(True); overview.pack_start(self.instruction, False, False, 0)
         row = Gtk.Box(spacing=8); overview.pack_start(row, False, False, 0)
-        for title, target in [('Test Tone Shifter', 'TSMEGA'), ('Test Chocolate', 'SINCO')]:
+        for title, target in [('Test Chocolate', 'SINCO')]:
             button = Gtk.Button(label=title); button.connect('clicked', lambda _, t=target: self.start_test(t)); row.pack_start(button, False, False, 0)
         button = Gtk.Button(label='Save report'); button.connect('clicked', self.save_report); row.pack_start(button, False, False, 0)
-
-        tone = self.tab(notebook, 'Tone Shifter')
-        info = Gtk.Label(label='Software mappings, reloaded by the kit within two seconds. No hardware settings are written.\n'
-                               'For the current hardware profile: 1/2 send CC22/25 (both values count as presses).\n'
-                               '3/4 change the hardware bank; the following A–D reports its page using PC messages.\n'
-                               'USB hardware programming is not implemented: configure the pedal panel if needed.', xalign=0)
-        info.set_line_wrap(True); tone.pack_start(info, False, False, 0)
-        grid = Gtk.Grid(column_spacing=8, row_spacing=6); tone.pack_start(grid, False, False, 0)
-        self.spins = {}
-        for i, (key, title, maximum) in enumerate([('previous_cc', '1 · Previous preset CC', 127),
-                                                 ('next_cc', '2 · Next preset CC', 127),
-                                                 ('effect_offset', 'First bank · A Program Change', 127)]):
-            grid.attach(Gtk.Label(label=title, xalign=0), 0, i, 1, 1)
-            spin = Gtk.SpinButton.new_with_range(0, maximum, 1); spin.set_value(self.profile[key]); self.spins[key] = spin
-            grid.attach(spin, 1, i, 1, 1)
-            button = Gtk.Button(label='Learn'); button.connect('clicked', lambda _, k=key: self.learn(k)); grid.attach(button, 2, i, 1, 1)
-        button = Gtk.Button(label='Save Tone Shifter mappings'); button.connect('clicked', self.save_tone); tone.pack_start(button, False, False, 0)
 
         chocolate = self.tab(notebook, 'Chocolate')
         self.choc_status = Gtk.Label(label='Standard USB Chocolate (SINCO) only; Chocolate Plus and Bluetooth are not supported.', xalign=0)

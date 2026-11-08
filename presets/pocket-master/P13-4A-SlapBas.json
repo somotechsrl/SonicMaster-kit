@@ -1,0 +1,122 @@
+{
+  "version": "1.0",
+  "presetName": "4A:SlapBass",
+  "deviceName": "4A:SlapBas",
+  "ampMode": "Normal",
+  "presetVolume": 50,
+  "presetBpm": 120,
+  "signalChain": [
+    "NR",
+    "FX1",
+    "DRV",
+    "AMP",
+    "IR",
+    "EQ",
+    "FX2",
+    "DLY",
+    "RVB"
+  ],
+  "modules": {
+    "NR": {
+      "enabled": false,
+      "effect": "Gate",
+      "effectId": 1,
+      "parameters": {
+        "THRE": 88
+      }
+    },
+    "FX1": {
+      "enabled": true,
+      "effect": "COMP 1",
+      "effectId": 101,
+      "parameters": {
+        "Sustain": 21,
+        "Vol": 50
+      }
+    },
+    "DRV": {
+      "enabled": true,
+      "effect": "Butter OD",
+      "effectId": 202,
+      "parameters": {
+        "Gain": 64,
+        "Vol": 50
+      }
+    },
+    "AMP": {
+      "enabled": true,
+      "effect": "A BassVT",
+      "effectId": 321,
+      "parameters": {
+        "Gain": 30,
+        "Bass": 55,
+        "Middle": 45,
+        "MidFreq": 2,
+        "Treble": 60,
+        "Vol": 50
+      }
+    },
+    "IR": {
+      "enabled": false,
+      "effect": "Jazz 2x12",
+      "effectId": 408,
+      "parameters": {
+        "Vol": 50
+      }
+    },
+    "EQ": {
+      "enabled": true,
+      "effect": "Bass EQ",
+      "effectId": 503,
+      "parameters": {
+        "50Hz": 2,
+        "120Hz": 1,
+        "400Hz": 2,
+        "800Hz": 0,
+        "4.5kHz": 4,
+        "Vol": 50
+      }
+    },
+    "FX2": {
+      "enabled": true,
+      "effect": "B-Chorus",
+      "effectId": 107,
+      "parameters": {
+        "Depth": 43,
+        "Rate": 3.2,
+        "Vol": 50,
+        "Sync": 0
+      }
+    },
+    "DLY": {
+      "enabled": false,
+      "effect": "Pure",
+      "effectId": 701,
+      "parameters": {
+        "Mix": 20,
+        "Time": 500,
+        "F.Back": 30,
+        "Sync": 0,
+        "Trail": 0
+      }
+    },
+    "RVB": {
+      "enabled": false,
+      "effect": "Room",
+      "effectId": 802,
+      "parameters": {
+        "Mix": 30,
+        "Decay": 50
+      }
+    }
+  },
+  "adaptationNotes": [
+    "Booster approssimato con Butter OD",
+    "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+    "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+    "Bi-Chorus adattato: mix e ritardi interni non equivalenti",
+    "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+  ],
+  "sourcePreset": "patch_015.tlgfx",
+  "sourceLabel": "4A"
+}

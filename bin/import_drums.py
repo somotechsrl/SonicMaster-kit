@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a local drum-video collection into concise, organized ToneLib audio files."""
+"""Convert a local drum-video collection into concise, organized local backing tracks."""
 import argparse,concurrent.futures,json,re,subprocess
 from pathlib import Path
 

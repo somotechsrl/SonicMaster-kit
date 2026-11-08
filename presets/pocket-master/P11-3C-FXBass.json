@@ -1,0 +1,125 @@
+{
+  "version": "1.0",
+  "presetName": "3C:FXBass",
+  "deviceName": "3C:FXBass",
+  "ampMode": "Normal",
+  "presetVolume": 50,
+  "presetBpm": 120,
+  "signalChain": [
+    "NR",
+    "FX1",
+    "DRV",
+    "AMP",
+    "IR",
+    "EQ",
+    "FX2",
+    "DLY",
+    "RVB"
+  ],
+  "modules": {
+    "NR": {
+      "enabled": true,
+      "effect": "Gate",
+      "effectId": 1,
+      "parameters": {
+        "THRE": 100
+      }
+    },
+    "FX1": {
+      "enabled": true,
+      "effect": "COMP 1",
+      "effectId": 101,
+      "parameters": {
+        "Sustain": 58,
+        "Vol": 50
+      }
+    },
+    "DRV": {
+      "enabled": false,
+      "effect": "Scream",
+      "effectId": 201,
+      "parameters": {
+        "Gain": 40,
+        "Tone": 70,
+        "Vol": 50
+      }
+    },
+    "AMP": {
+      "enabled": true,
+      "effect": "A BassVT",
+      "effectId": 321,
+      "parameters": {
+        "Gain": 29,
+        "Bass": 46,
+        "Middle": 54,
+        "MidFreq": 0,
+        "Treble": 50,
+        "Vol": 50
+      }
+    },
+    "IR": {
+      "enabled": false,
+      "effect": "Jazz 2x12",
+      "effectId": 408,
+      "parameters": {
+        "Vol": 50
+      }
+    },
+    "EQ": {
+      "enabled": true,
+      "effect": "Bass EQ",
+      "effectId": 503,
+      "parameters": {
+        "50Hz": 7,
+        "120Hz": 7,
+        "400Hz": 6,
+        "800Hz": 0,
+        "4.5kHz": 0,
+        "Vol": 50
+      }
+    },
+    "FX2": {
+      "enabled": true,
+      "effect": "Flanger",
+      "effectId": 108,
+      "parameters": {
+        "Depth": 36,
+        "Rate": 1.1,
+        "P.Delay": 50,
+        "F.Back": 29,
+        "Sync": 0
+      }
+    },
+    "DLY": {
+      "enabled": false,
+      "effect": "Pure",
+      "effectId": 701,
+      "parameters": {
+        "Mix": 20,
+        "Time": 500,
+        "F.Back": 30,
+        "Sync": 0,
+        "Trail": 0
+      }
+    },
+    "RVB": {
+      "enabled": true,
+      "effect": "Spring",
+      "effectId": 807,
+      "parameters": {
+        "Mix": 42,
+        "Decay": 61
+      }
+    }
+  },
+  "adaptationNotes": [
+    "IR per basso originali non disponibili nei modelli Pocket Master: IR bypassato per conservare la gamma bassa",
+    "Curve EQ ridotte alle cinque bande disponibili; scale e bande non identiche",
+    "Flanger adattato: mix e ritardi interni non equivalenti",
+    "Vibe omesso: entrambi i blocchi FX occupati",
+    "Tempo riverbero in secondi approssimato con Decay percentuale",
+    "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+  ],
+  "sourcePreset": "patch_013.tlgfx",
+  "sourceLabel": "3C"
+}

@@ -1,0 +1,124 @@
+{
+  "version": "1.0",
+  "presetName": "3A:SantanaStyle-Drive",
+  "deviceName": "3A:SantDrv",
+  "ampMode": "Normal",
+  "presetVolume": 50,
+  "presetBpm": 120,
+  "signalChain": [
+    "NR",
+    "FX1",
+    "DRV",
+    "AMP",
+    "IR",
+    "EQ",
+    "FX2",
+    "DLY",
+    "RVB"
+  ],
+  "modules": {
+    "NR": {
+      "enabled": true,
+      "effect": "Gate",
+      "effectId": 1,
+      "parameters": {
+        "THRE": 75
+      }
+    },
+    "FX1": {
+      "enabled": true,
+      "effect": "COMP 1",
+      "effectId": 101,
+      "parameters": {
+        "Sustain": 52,
+        "Vol": 50
+      }
+    },
+    "DRV": {
+      "enabled": true,
+      "effect": "Scream",
+      "effectId": 201,
+      "parameters": {
+        "Gain": 22,
+        "Tone": 62,
+        "Vol": 50
+      }
+    },
+    "AMP": {
+      "enabled": true,
+      "effect": "Brit 800",
+      "effectId": 308,
+      "parameters": {
+        "Gain": 50,
+        "Pres": 41,
+        "Vol": 50,
+        "Bass": 63,
+        "Middle": 72,
+        "Treble": 59
+      }
+    },
+    "IR": {
+      "enabled": true,
+      "effect": "Double 2x12",
+      "effectId": 406,
+      "parameters": {
+        "Vol": 50
+      }
+    },
+    "EQ": {
+      "enabled": false,
+      "effect": "GT EQ 1",
+      "effectId": 501,
+      "parameters": {
+        "125Hz": 0,
+        "400Hz": 0,
+        "800Hz": 0,
+        "1.6kHz": 0,
+        "4kHz": 0,
+        "Vol": 50
+      }
+    },
+    "FX2": {
+      "enabled": true,
+      "effect": "A-Chorus",
+      "effectId": 106,
+      "parameters": {
+        "Depth": 80,
+        "Rate": 4.4,
+        "Tone": 50,
+        "Sync": 0
+      }
+    },
+    "DLY": {
+      "enabled": true,
+      "effect": "Slap",
+      "effectId": 702,
+      "parameters": {
+        "Mix": 28,
+        "Time": 300,
+        "F.Back": 38,
+        "Trail": 0
+      }
+    },
+    "RVB": {
+      "enabled": true,
+      "effect": "Hall",
+      "effectId": 803,
+      "parameters": {
+        "Mix": 21,
+        "Decay": 63
+      }
+    }
+  },
+  "adaptationNotes": [
+    "Cent OD approssimato con Scream",
+    "Amplificatori paralleli ridotti al modello principale: Ms JCM800",
+    "Microfono, distanza e filtri IR originali approssimati dalla cassa interna",
+    "Mt-Chorus adattato: mix e ritardi interni non equivalenti",
+    "Tempo riverbero in secondi approssimato con Decay percentuale",
+    "IR Processor senza equivalente diretto; non trasferito",
+    "Livelli ricentrati a 50 e volume preset 50; rifinitura all’ascolto necessaria"
+  ],
+  "sourcePreset": "patch_010.tlgfx",
+  "sourceLabel": "3A"
+}
